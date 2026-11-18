@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
 import type { z } from "zod"
 import { contactSchema } from "@/lib/validators"
+import { sendMessage } from "@/lib/send-message"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -21,11 +22,14 @@ export function ContactForm() {
   })
   const { errors, isSubmitting } = form.formState
 
-  async function submit() {
-    // PHASE 2: POST to /api/contact
-    await new Promise((resolve) => setTimeout(resolve, 450))
-    toast.success("Contact form completed", { description: "This is a preview. Your message was not sent." })
-    form.reset()
+  async function submit(values: Values) {
+    try {
+      const preview = await sendMessage("contact", values)
+      toast.success(preview ? "Preview complete. Your message was not sent." : "Your message was received.")
+      form.reset()
+    } catch (error) {
+      form.setError("root", { message: error instanceof Error ? error.message : "Please try again." })
+    }
   }
 
   function messageFor(name: keyof Values) {
@@ -46,6 +50,6 @@ export function ContactForm() {
       {messageFor("message")}
     </div>
     <button className="pill pill-primary w-fit" type="submit" disabled={isSubmitting}>{isSubmitting ? "Submitting…" : "Send message"}</button>
-    <p className="text-sm text-muted-foreground">Messages entered in this preview are not sent.</p>
+    {errors.root?.message && <p role="alert" className="text-sm text-destructive">{errors.root.message}</p>}
   </form>
 }

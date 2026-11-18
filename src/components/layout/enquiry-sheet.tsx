@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { budgetRanges, enquirySchema, gemInterests } from "@/lib/validators"
+import { sendMessage } from "@/lib/send-message"
 import { site, whatsappLink } from "@/config/site"
 import { restoreOverlayFocus, useUi, type EnquiryStone } from "@/store/ui"
 
@@ -39,11 +40,14 @@ function EnquiryForm({ stones }: { stones: EnquiryStone[] }) {
     ? "Hello Vault & Vein, I’m interested in " + stones.map((stone) => stone.name).join(", ") + "."
     : "Hello Vault & Vein, I’d like to enquire about a gemstone.")
 
-  async function submit() {
-    // PHASE 2: POST to /api/enquiry
-    await new Promise((resolve) => setTimeout(resolve, 450))
-    toast.success("Enquiry form completed", { description: "This is a preview. Your enquiry was not sent." })
-    form.reset()
+  async function submit(values: Values) {
+    try {
+      const preview = await sendMessage("enquiry", { ...values, stones: stones.map(({ slug }) => slug) })
+      toast.success(preview ? "Preview complete. Your enquiry was not sent." : "Your enquiry was received.")
+      form.reset()
+    } catch (error) {
+      form.setError("root", { message: error instanceof Error ? error.message : "Please try again." })
+    }
   }
 
   function fieldError(name: keyof Values) {
@@ -82,6 +86,7 @@ function EnquiryForm({ stones }: { stones: EnquiryStone[] }) {
       {fieldError("notes")}
     </div>
     <button className="pill pill-primary" type="submit" disabled={isSubmitting}>{isSubmitting ? "Submitting…" : "Submit enquiry"}</button>
+    {errors.root?.message && <p role="alert" className="text-sm text-destructive">{errors.root.message}</p>}
     {whatsapp
       ? <a className="pill" href={whatsapp} target="_blank" rel="noreferrer">Chat on WhatsApp</a>
       : <button className="pill" type="button" disabled aria-describedby="enquiry-whatsapp-note">Chat on WhatsApp</button>}
@@ -101,7 +106,7 @@ export function EnquirySheet() {
       }} onCloseAutoFocus={restoreOverlayFocus} className="overlay-scroll max-h-[92dvh] overflow-y-auto md:max-h-dvh md:w-[29rem]! md:max-w-none!">
       <SheetHeader className="p-6 pt-12">
         <SheetTitle id="enquiry-title" tabIndex={-1} className="font-display text-4xl">Enquire about a stone</SheetTitle>
-        <SheetDescription>{site.replyTime} This preview does not send messages.</SheetDescription>
+        <SheetDescription>{site.replyTime}</SheetDescription>
       </SheetHeader>
       <EnquiryForm key={enquiry.map(({ slug }) => slug).join(",")} stones={enquiry} />
     </SheetContent>

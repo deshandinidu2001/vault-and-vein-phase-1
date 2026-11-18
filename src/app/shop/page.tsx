@@ -6,8 +6,9 @@ import { ShopSkeleton } from "@/components/shop/shop-skeleton"
 import { getStoneOptions, getStones, parseStoneFilters, type StoneFilters } from "@/lib/data"
 
 import { pageMetadata } from "@/lib/seo"
+import { catalogueConfigured } from "@/lib/backend"
 
-export const metadata = pageMetadata("Shop", "Browse and filter cut and polished gemstones in the Vault & Vein sample catalogue.", "/shop")
+export const metadata = pageMetadata("Shop", "Browse and filter cut and polished gemstones in the Vault & Vein catalogue.", "/shop")
 
 type Query = Record<string, string | string[] | undefined>
 
@@ -24,14 +25,14 @@ async function Results({ filters, query }: { filters: StoneFilters; query: Query
   const { stones, total, page, pages } = await getStones(filters)
   return <section id="results" className="space-y-6" aria-labelledby="results-title">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h2 id="results-title" className="text-4xl">Sample stones</h2>
+      <h2 id="results-title" className="text-4xl">{catalogueConfigured ? "Stones" : "Sample stones"}</h2>
       <p role="status" className="text-sm text-muted-foreground">{total} {total === 1 ? "stone" : "stones"} found</p>
     </div>
     {stones.length ? <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {stones.map((stone) => <li key={stone.id}><StoneCard stone={stone} /></li>)}
     </ul> : <div className="grid justify-items-start gap-3 rounded-2xl border border-emerald/15 p-8">
       <h3>No stones match these filters.</h3>
-      <p>Try a wider range or clear the filters to see the full sample catalogue.</p>
+      <p>Try a wider range or clear the filters to see the full catalogue.</p>
       <Link href="/shop" className="pill">Clear filters</Link>
     </div>}
     {pages > 1 && <nav className="flex flex-wrap items-center gap-2" aria-label="Catalogue pages">
@@ -62,7 +63,7 @@ export default function ShopPage({ searchParams }: { searchParams: Promise<Query
     <div className="space-y-5">
       <p className="eyebrow text-[#785520]">The catalogue</p>
       <h1>Shop the stones.</h1>
-      <p>Compare cuts, colours and dimensions across our sample collection. Prices, availability and report details are illustrative.</p>
+      <p>Compare cuts, colours and dimensions across the collection.{!catalogueConfigured && " Sample prices, availability and report details are illustrative."}</p>
     </div>
     <Suspense fallback={<ShopSkeleton />}>
       <Catalogue searchParams={searchParams} />

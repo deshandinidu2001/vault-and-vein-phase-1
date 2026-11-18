@@ -22,6 +22,7 @@ export type Stone = {
   price_lkr: number
   status: StoneStatus
   is_featured: boolean
+  is_sample?: boolean
   model_key: GemCut
   tint: string
   certified: boolean

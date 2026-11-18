@@ -48,7 +48,7 @@ export function GemGallery({ stones }: { stones: Stone[] }) {
       <div className="wrap gallery-preview">
         <div className="gallery-intro">
           <SectionHeading eyebrow="The gem gallery">Find your next<br />signature stone.</SectionHeading>
-          <p className="text-cream/80" data-reveal>Explore the cuts and colour families in our sample collection. Select a stone to see its details.</p>
+          <p className="text-cream/80" data-reveal>Explore cuts and colour families. Select a stone to see its details.</p>
         </div>
         <ToggleGroup type="single" aria-label="Filter gallery by gem type" value={filter}
           onValueChange={(value) => {
@@ -59,7 +59,7 @@ export function GemGallery({ stones }: { stones: Stone[] }) {
           }} className="flex flex-wrap gap-2">
           {filters.map(([value, label]) => <ToggleGroupItem key={value} value={value} className="h-auto min-h-12 min-w-12 rounded-full! border border-cream/30 px-4 text-cream hover:bg-cream/15 hover:text-cream data-[state=on]:bg-gold data-[state=on]:text-deep">{label}</ToggleGroupItem>)}
         </ToggleGroup>
-        <ul ref={rail} className="gallery-rail" aria-label="Sample gems" onScroll={(event) => {
+        <ul ref={rail} className="gallery-rail" aria-label="Gemstone preview" onScroll={(event) => {
           const track = event.currentTarget
           const start = track.scrollLeft < 2
           const end = track.scrollLeft + track.clientWidth >= track.scrollWidth - 2
@@ -93,9 +93,9 @@ export function GemGallery({ stones }: { stones: Stone[] }) {
             <ArrowRight size={20} aria-hidden="true" />
           </button>
         </div>}
-        {!visible.length && <p role="status">There are no sample stones in this selection.</p>}
+        {!visible.length && <p role="status">There are no stones in this selection.</p>}
         <div className="gallery-footer">
-          <p className="text-sm text-cream/80">A preview of the sample catalogue.</p>
+          <p className="text-sm text-cream/80">A preview of the catalogue.</p>
           <Link href={shopLink} className="pill pill-gold">Explore more in the shop <ArrowUpRight size={18} aria-hidden="true" /></Link>
         </div>
       </div>
@@ -115,14 +115,14 @@ export function GemGallery({ stones }: { stones: Stone[] }) {
             <div className="grid gap-6 pt-4 md:grid-cols-2 md:items-center">
               <div className="stone-art rounded-2xl"><GemArt cut={stone.cut} tint={stone.tint} label={"Illustration of " + stone.name} sizes="(min-width: 768px) 350px, 80vw" /></div>
               <div className="grid gap-3" aria-live="polite">
-                <p className="eyebrow text-[#785520]">{gemNames[stone.gem_type]} / Sample stone</p>
+                <p className="eyebrow text-[#785520]">{gemNames[stone.gem_type]}{stone.is_sample && " / Sample stone"}</p>
                 <DialogTitle className="font-display text-4xl">{stone.name}</DialogTitle>
                 <DialogDescription>{stone.description}</DialogDescription>
                 <dl className="grid grid-cols-2 gap-2 text-sm">
                   <div><dt className="text-muted-foreground">Cut</dt><dd>{stone.cut}</dd></div>
                   <div><dt className="text-muted-foreground">Weight</dt><dd>{stone.carat} ct</dd></div>
                   <div><dt className="text-muted-foreground">Colour</dt><dd>{stone.colour}</dd></div>
-                  <div><dt className="text-muted-foreground">Sample price</dt><dd>{formatPrice(stone.price_lkr, currency)}</dd></div>
+                  <div><dt className="text-muted-foreground">{stone.is_sample ? "Sample price" : "Price"}</dt><dd>{formatPrice(stone.price_lkr, currency)}</dd></div>
                 </dl>
                 <div className="flex flex-wrap gap-2">
                   <Link href={"/shop/" + stone.slug} onClick={() => setSelected(null)} className="pill pill-primary">View details</Link>

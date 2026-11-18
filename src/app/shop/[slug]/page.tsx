@@ -6,7 +6,7 @@ import { ProductGallery } from "@/components/product/product-gallery"
 import { StoneCard } from "@/components/shop/stone-card"
 import { StonePrice } from "@/components/shop/stone-price"
 import { Badge } from "@/components/ui/badge"
-import { getRelated, getStoneBySlug, getStoneSlugs } from "@/lib/data"
+import { getRelated, getStoneBySlug } from "@/lib/data"
 import { gemNames, type Stone } from "@/types/stone"
 import { site } from "@/config/site"
 import { pageMetadata, serializeJsonLd } from "@/lib/seo"
@@ -29,7 +29,7 @@ function ProductData({ stone }: { stone: Stone }) {
     sku: stone.id,
     category: gemNames[stone.gem_type],
     color: stone.colour,
-    description: "Sample listing. " + stone.description,
+    description: (stone.is_sample ? "Sample listing. " : "") + stone.description,
     url: new URL(path, site.url).href,
     image: new URL("/images/stones/" + stone.slug, site.url).href,
     brand: { "@type": "Brand", name: site.name },
@@ -42,10 +42,6 @@ function ProductData({ stone }: { stone: Stone }) {
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(product) }} />
 }
 
-export async function generateStaticParams() {
-  return (await getStoneSlugs()).map((slug) => ({ slug }))
-}
-
 export default async function StoneDetail({ params }: Props) {
   const { slug } = await params
   const stone = await getStoneBySlug(slug)
@@ -55,7 +51,7 @@ export default async function StoneDetail({ params }: Props) {
     ["Gem type", gemNames[stone.gem_type]], ["Cut", stone.cut], ["Weight", stone.carat + " ct"],
     ["Dimensions", [stone.length_mm, stone.width_mm, stone.depth_mm].join(" × ") + " mm"],
     ["Colour", stone.colour], ["Clarity", stone.clarity], ["Treatment", stone.treatment], ["Origin", stone.origin],
-    ["Lab report", stone.certified ? "Indicated in sample record" : "None in sample record"],
+    ["Lab report", stone.certified ? (stone.is_sample ? "Indicated in sample record" : "Available on request") : "Not listed"],
   ]
 
   return <article className="wrap section page-top space-y-10">
@@ -64,7 +60,7 @@ export default async function StoneDetail({ params }: Props) {
     <div className="film-grid !items-start">
       <ProductGallery stone={stone} />
       <div className="grid gap-5">
-        <p className="eyebrow text-[#785520]">{gemNames[stone.gem_type]} / Sample stone</p>
+        <p className="eyebrow text-[#785520]">{gemNames[stone.gem_type]}{stone.is_sample && " / Sample stone"}</p>
         <h1 className="text-[clamp(3rem,6vw,5.8rem)]">{stone.name}</h1>
         <p>{stone.description}</p>
         <div className="flex flex-wrap items-center gap-4">
@@ -72,7 +68,7 @@ export default async function StoneDetail({ params }: Props) {
           <Badge variant="outline" className="capitalize">{stone.status}</Badge>
         </div>
         <ProductActions stone={stone} />
-        <p className="text-sm text-muted-foreground">Sample pricing and availability. USD uses an illustrative conversion rate.</p>
+        <p className="text-sm text-muted-foreground">{stone.is_sample && "Sample pricing and availability. "}USD is an estimate.</p>
         <table className="w-full border-t border-emerald/20 text-sm">
           <caption className="sr-only">Specifications for {stone.name}</caption>
           <tbody>{details.map(([name, value]) => <tr className="border-b border-emerald/15" key={name}>

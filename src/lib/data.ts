@@ -1,6 +1,28 @@
 import "server-only"
 import { mockStones } from "@/data/stones"
 import { gemNames, type Stone } from "@/types/stone"
+import { cache } from "react"
+import { connection } from "next/server"
+import { catalogueConfigured, publicDatabase } from "./backend"
+
+const loadCatalogue = cache(async (): Promise<Stone[]> => {
+  if (!catalogueConfigured) return mockStones.map((stone) => ({ ...stone, is_sample: true }))
+  await connection()
+  const db = publicDatabase()
+  const stones: Stone[] = []
+  for (let start = 0; ; start += 500) {
+    const { data, error } = await db.from("products")
+      .select("id,slug,name,gem_type,cut,carat,length_mm,width_mm,depth_mm,colour,clarity,treatment,origin,description,price_lkr,status,reserved_until,is_featured,is_sample,model_key,tint,certified,collections")
+      .eq("is_published", true).order("slug").range(start, start + 499)
+    if (error) throw new Error("The catalogue is temporarily unavailable.")
+    const rows = data as (Stone & { reserved_until: string | null })[]
+    for (const { reserved_until, ...stone } of rows) {
+      if (stone.status === "reserved" && reserved_until && Date.parse(reserved_until) <= Date.now()) stone.status = "available"
+      stones.push(stone)
+    }
+    if (rows.length < 500) return stones
+  }
+})
 
 export type StoneFilters = {
   q?: string; type?: string; cut?: string; colour?: string; origin?: string; collection?: string
@@ -35,7 +57,7 @@ const featuredFirst = (a: Stone, b: Stone) => Number(b.is_featured) - Number(a.i
 
 export async function getStones(filters: StoneFilters = {}) {
   const search = normalize(filters.q ?? "")
-  const filtered = mockStones.filter((stone) =>
+  const filtered = (await loadCatalogue()).filter((stone) =>
     matches(stone.gem_type, filters.type) &&
     matches(stone.cut, filters.cut) &&
     matches(stone.colour, filters.colour) &&
@@ -62,11 +84,11 @@ export async function getStones(filters: StoneFilters = {}) {
 }
 
 export async function getStoneBySlug(slug: string) {
-  return mockStones.find((stone) => stone.slug === slug)
+  return (await loadCatalogue()).find((stone) => stone.slug === slug)
 }
 
 export async function getFeatured(limit = 8) {
-  return [...mockStones].sort(featuredFirst).slice(0, limit)
+  return [...await loadCatalogue()].sort(featuredFirst).slice(0, limit)
 }
 
 export async function getRelated(stone: Stone, limit = 4) {
@@ -75,15 +97,16 @@ export async function getRelated(stone: Stone, limit = 4) {
       (item.collections.some((tag) => stone.collections.includes(tag)) ? 2 : 0) +
       (item.is_featured ? 1 : 0)
   }
-  return mockStones.filter((item) => item.slug !== stone.slug)
+  return (await loadCatalogue()).filter((item) => item.slug !== stone.slug)
     .sort((a, b) => similarity(b) - similarity(a)).slice(0, limit)
 }
 
 export async function getStoneOptions() {
-  const values = (key: "cut" | "colour" | "origin") => [...new Set(mockStones.map((stone) => stone[key]))].sort()
+  const catalogue = await loadCatalogue()
+  const values = (key: "cut" | "colour" | "origin") => [...new Set(catalogue.map((stone) => stone[key]))].sort()
   return { cuts: values("cut"), colours: values("colour"), origins: values("origin") }
 }
 
 export async function getStoneSlugs() {
-  return mockStones.map(({ slug }) => slug)
+  return (await loadCatalogue()).map(({ slug }) => slug)
 }
