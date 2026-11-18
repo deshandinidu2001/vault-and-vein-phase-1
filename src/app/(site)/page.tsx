@@ -8,7 +8,10 @@ import { FinalCall } from "@/components/home/final-call"
 import { GemGallery } from "@/components/home/gem-gallery"
 import { HeroSlider } from "@/components/home/hero-slider"
 
-export default function Home() {
+import { getFeatured } from "@/lib/data"
+
+export default async function Home() {
+  const stones = await getFeatured()
   return (
     <>
       <HeroSlider />
@@ -16,7 +19,7 @@ export default function Home() {
         <CollectionEdit />
         <Experience />
         <EngagementEdit />
-        <GemGallery stones={[]} />
+        <GemGallery stones={stones} />
         <CareEdit />
         <Faq />
         <FinalCall />

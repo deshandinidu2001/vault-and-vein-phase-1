@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Menu, ShoppingBag } from "lucide-react"
 import { motion, useReducedMotion } from "framer-motion"
+import { useCart } from "@/store/cart"
 import { navigation } from "@/config/site"
 import { useUi, restoreOverlayFocus } from "@/store/ui"
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
@@ -17,7 +18,8 @@ export function BrandBadge({ size = 40 }: { size?: number }) {
   </span>
 }
 
-export function SiteHeader({ count = 0 }: { count?: number }) {
+export function SiteHeader() {
+  const count = useCart((state) => state.items.length)
   const path = usePathname()
   const reduced = useReducedMotion()
   const { overlay, openMenu, openCart, closeOverlay, currency, toggleCurrency } = useUi()
