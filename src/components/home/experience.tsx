@@ -1,60 +1,74 @@
-"use client"
-
-import { useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
-import { GemViewer } from "@/components/three/gem-viewer"
-import type { GemStage } from "@/components/three/gem-shape"
-import { SectionHeading } from "@/components/ui/section-heading"
-import { gsap, ScrollTrigger, useGSAP } from "@/components/animation/motion-provider"
+import { ArrowUpRight } from "lucide-react"
 
 const steps = [
-  { title: "First, we source.", body: "We begin with the rough, looking for colour, character and material worth cutting.", stage: "Rough", tint: "#3e6b50" },
-  { title: "Then, we cut.", body: "Proportions and facet placement determine how a stone shows its colour in the light.", stage: "Cut", tint: "#259371" },
-  { title: "Finally, we certify.", body: "Where a laboratory report is available, we share it so you can review the findings for that stone.", stage: "Polished", tint: "#1cb883" },
-] as const
+  {
+    title: "First, we source.",
+    body: "We look for character in the rough: colour, clarity and the parts a cutter can bring into view.",
+    drawing: (
+      <>
+        <path className="craft-guide" d="M17 88h146M90 11v81" />
+        <path d="m37 63 14-32 30-14 39 13 23 29-25 25-47 8Z" />
+        <path d="m37 63 39-8 13-23 31-2M51 31l25 24-5 37m5-37 30 12 12 17m-29-52 17 35 37-8" />
+        <path className="craft-accent" d="m41 70 29-9 19 9 21-19 26 9m-76-34 22 9 17-13" />
+      </>
+    ),
+  },
+  {
+    title: "Then, we cut.",
+    body: "We consider proportion and facet placement so the cut can make the most of a stone’s colour and light.",
+    drawing: (
+      <>
+        <path className="craft-guide" d="M24 50h132M90 8v84M39 19h102M39 81h102" />
+        <path d="m53 24 37-8 37 8 15 26-15 26-37 8-37-8-15-26Z" />
+        <path d="m67 35 23-5 23 5 10 15-10 15-23 5-23-5-10-15Z" />
+        <path d="m53 24 14 11m23-19v14m37-6-14 11m29 15h-19m4 26-14-11M90 84V70m-37 6 14-11M38 50h19" />
+        <path className="craft-accent" d="m67 35 23-5 23 5 10 15-10 15-23 5-23-5-10-15Z" />
+      </>
+    ),
+  },
+  {
+    title: "Finally, we certify.",
+    body: "When a lab report is available, we share it so you can review the findings for that individual stone.",
+    drawing: (
+      <>
+        <path className="craft-guide" d="M25 89h130M37 17h106" />
+        <path d="M53 13h57l18 18v58H53Zm57 0v18h18M65 29h27M65 41h46M65 51h33M65 62h21M65 73h16" />
+        <circle className="craft-accent" cx="107" cy="65" r="11" />
+        <path className="craft-accent" d="m102 65 3 3 6-7m-9 15-3 7 8-3 8 3-3-7" />
+      </>
+    ),
+  },
+]
 
 export function Experience() {
-  const scope = useRef<HTMLElement>(null)
-  const [active, setActive] = useState<GemStage>(0)
-
-  useGSAP(() => {
-    const rows = gsap.utils.toArray<HTMLElement>("[data-stage]", scope.current)
-    const update = () => {
-      const midpoint = window.innerHeight * .54
-      const closest = rows.reduce((previous, row, index) => {
-        const delta = Math.abs(row.getBoundingClientRect().top + row.offsetHeight / 2 - midpoint)
-        return delta < previous.delta ? { index, delta } : previous
-      }, { index: 0, delta: Infinity })
-      setActive(closest.index as GemStage)
-    }
-    const trigger = ScrollTrigger.create({ trigger: "#experience-steps", start: "top 80%", end: "bottom 20%", onUpdate: update, onRefresh: update })
-    update()
-    return () => trigger.kill()
-  }, { scope })
-
-  const step = steps[active]
   return (
-    <section ref={scope} id="experience" className="section marble dark-panel">
-      <div className="wrap film-grid experience-grid">
-        <div className="experience-visual">
-          <div className="relative aspect-[5/4] overflow-hidden rounded-3xl border border-cream/15 bg-deep/65 md:aspect-square">
-            <div className="pointer-events-none absolute inset-[14%] rounded-full border border-gold/20" aria-hidden="true" />
-            <GemViewer cut="Cushion" stage={active} tint={step.tint} label={step.stage + " stage of an illustrative gemstone"} />
-            <p className="eyebrow absolute bottom-4 left-5">0{active + 1} / {step.stage}</p>
+    <section id="experience" className="wrap section" aria-labelledby="craft-title">
+      <div className="craft-panel dark-panel">
+        <div className="craft-intro">
+          <div>
+            <p className="eyebrow">The Vault &amp; Vein way</p>
+            <h2 id="craft-title">What a stone can become.</h2>
           </div>
+          <p>Colour starts in the rough. The decisions that follow bring it into focus and help you understand the finished stone.</p>
         </div>
-        <div className="grid gap-6">
-          <SectionHeading eyebrow="The Vault & Vein way">What a stone can become.</SectionHeading>
-          <p data-reveal>From an uneven piece of rough to a polished surface, every decision changes the way a stone meets the light.</p>
-          <ol id="experience-steps" className="grid">
-            {steps.map(({ title, body }, index) => <li key={title} data-stage data-active={active === index} className="experience-step">
-              <span className="eyebrow tabular-nums" data-count={index + 1}>0{index + 1}</span>
-              <div className="space-y-2"><h3>{title}</h3><p>{body}</p></div>
-            </li>)}
-          </ol>
-          <Link href="/about" className="line-link w-fit">Read our story <ArrowRight size={19} aria-hidden="true" /></Link>
-        </div>
+        <ol className="craft-steps" role="list">
+          {steps.map(({ title, body, drawing }, index) => (
+            <li className="craft-step" key={title}>
+              <div className="craft-step-visual" aria-hidden="true">
+                <span>0{index + 1}</span>
+                <svg viewBox="0 0 180 100" fill="none" stroke="currentColor" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round">
+                  {drawing}
+                </svg>
+              </div>
+              <h3>{title}</h3>
+              <p>{body}</p>
+            </li>
+          ))}
+        </ol>
+        <Link href="/about" className="line-link craft-link">
+          Read our story <ArrowUpRight size={18} aria-hidden="true" />
+        </Link>
       </div>
     </section>
   )

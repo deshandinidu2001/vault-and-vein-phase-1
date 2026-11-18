@@ -48,7 +48,7 @@ export function SiteHeader() {
     <header className="site-header" data-compact={compact}>
       <div className="header-row">
         <Link href="/" className="brand" aria-label="Vault & Vein home" translate="no">
-          <BrandBadge size={30} /><span>VAULT &amp; VEIN</span>
+          <BrandBadge size={33} /><span>VAULT &amp; VEIN</span>
         </Link>
         <nav className="desktop-nav" aria-label="Main navigation">
           {navigation.map(({ href, label }) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined}>{label}</Link>)}

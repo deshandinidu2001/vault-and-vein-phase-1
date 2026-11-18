@@ -25,7 +25,7 @@
 
 .site-header[data-compact=true] .header-row {
   width: min(58rem, calc(100% - var(--page-edge) * 2));
-  min-height: 46px;
+  min-height: 54px;
   transform: translateY(.65rem);
   border-radius: 999px;
   border-color: #0b3d2e26;

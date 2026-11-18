@@ -45,17 +45,27 @@ async function Results({ filters, query }: { filters: StoneFilters; query: Query
   </section>
 }
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<Query> }) {
+async function Catalogue({ searchParams }: { searchParams: Promise<Query> }) {
   const [query, options] = await Promise.all([searchParams, getStoneOptions()])
   const filters = parseStoneFilters(query)
-  const key = JSON.stringify(filters)
+  const queryKey = JSON.stringify(filters)
+  return <>
+    <ShopFilters key={"filters:" + queryKey} current={filters} options={options} />
+    <Suspense key={"results:" + queryKey} fallback={<ShopSkeleton />}>
+      <Results filters={filters} query={query} />
+    </Suspense>
+  </>
+}
+
+export default function ShopPage({ searchParams }: { searchParams: Promise<Query> }) {
   return <div className="wrap page-top section space-y-10">
     <div className="space-y-5">
       <p className="eyebrow text-[#785520]">The catalogue</p>
       <h1>Shop the stones.</h1>
       <p>Compare cuts, colours and dimensions across our sample collection. Prices, availability and report details are illustrative.</p>
     </div>
-    <ShopFilters key={key} current={filters} options={options} />
-    <Suspense key={key} fallback={<ShopSkeleton />}><Results filters={filters} query={query} /></Suspense>
+    <Suspense fallback={<ShopSkeleton />}>
+      <Catalogue searchParams={searchParams} />
+    </Suspense>
   </div>
 }

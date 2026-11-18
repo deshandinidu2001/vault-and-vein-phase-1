@@ -53,8 +53,11 @@ export default function About() {
         {care.map(([title, text]) => <li className="grid content-start gap-3 border-t border-emerald/20 pt-5" key={title} data-reveal><h3>{title}</h3><p>{text}</p></li>)}
       </ul>
     </section>
-    <section className="section dark-panel">
-      <div className="wrap grid justify-items-start gap-6"><h2 data-split>{site.closing}</h2><Link className="pill pill-gold" href="/shop">Explore the Collection</Link></div>
+    <section className="wrap section border-t border-emerald/15">
+      <div className="grid justify-items-start gap-6 rounded-3xl border border-emerald/15 bg-[#ede4d1] p-7 text-deep sm:p-10 lg:p-16">
+        <h2 data-split>{site.closing}</h2>
+        <Link className="pill pill-primary" href="/shop">Explore the Collection</Link>
+      </div>
     </section>
   </Reveal>
 }
