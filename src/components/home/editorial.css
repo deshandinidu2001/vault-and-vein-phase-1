@@ -1,0 +1,13 @@
+.collection-image-active { animation: collection-reveal .9s var(--easing) both; }
+.collection-text-active { animation: editorial-fade .6s var(--easing) both; }
+.experience-grid { align-items: start; }
+.experience-step { display: grid; grid-template-columns: 2.5rem 1fr; gap: .75rem; padding: 1.5rem 1rem; border-top: 1px solid #f6f1e72b; transition: background-color .3s, color .3s; }
+.experience-step[data-active=true] { border-top-color: #c9a24b; background: #f6f1e70a; }
+.experience-step p { color: #f6f1e7d0; }
+.viewer-controls .icon-button { background-color: #f6f1e7; color: #06251c; }
+@media (min-width: 768px) {
+  .experience-visual { position: sticky; top: 6rem; }
+  .experience-step { min-height: 35svh; align-content: center; }
+}
+@keyframes collection-reveal { from { clip-path: inset(0 9% 0 0 round 1.5rem); opacity: .45; } to { clip-path: inset(0 0 0 0 round 1.5rem); opacity: 1; } }
+@keyframes editorial-fade { from { opacity: 0; } to { opacity: 1; } }

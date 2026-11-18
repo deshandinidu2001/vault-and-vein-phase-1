@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "../components/home/hero.css";
+@import "../components/home/editorial.css";
 
 @theme inline {
   --font-sans: var(--type-sans);
