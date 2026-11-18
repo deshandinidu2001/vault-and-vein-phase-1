@@ -13,3 +13,10 @@ export const enquirySchema = z.object({
   size: z.string().trim().max(100, "Use 100 characters or fewer."),
   notes: z.string().trim().max(2000, "Use 2,000 characters or fewer."),
 })
+
+export const contactSchema = z.object({
+  name: z.string().trim().min(2, "Enter your name.").max(100),
+  email: z.email("Enter a valid email address."),
+  subject: z.string().trim().min(3, "Enter a subject.").max(150, "Use 150 characters or fewer."),
+  message: z.string().trim().min(10, "Enter a message of at least 10 characters.").max(3000, "Use 3,000 characters or fewer."),
+})

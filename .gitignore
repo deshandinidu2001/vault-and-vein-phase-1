@@ -40,3 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /_incoming/
+
+# Local values and Phase 2 example
+.env.local
+!.env.example

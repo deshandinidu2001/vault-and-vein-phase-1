@@ -5,6 +5,10 @@ import { StoneCard } from "@/components/shop/stone-card"
 import { ShopSkeleton } from "@/components/shop/shop-skeleton"
 import { getStoneOptions, getStones, parseStoneFilters, type StoneFilters } from "@/lib/data"
 
+import { pageMetadata } from "@/lib/seo"
+
+export const metadata = pageMetadata("Shop", "Browse and filter cut and polished gemstones in the Vault & Vein sample catalogue.", "/shop")
+
 type Query = Record<string, string | string[] | undefined>
 
 function pageLink(query: Query, page: number) {

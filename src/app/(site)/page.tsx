@@ -9,6 +9,10 @@ import { GemGallery } from "@/components/home/gem-gallery"
 import { HeroSlider } from "@/components/home/hero-slider"
 
 import { getFeatured } from "@/lib/data"
+import { pageMetadata } from "@/lib/seo"
+import { site } from "@/config/site"
+
+export const metadata = pageMetadata(site.tagline, site.description, "/")
 
 export default async function Home() {
   const stones = await getFeatured()

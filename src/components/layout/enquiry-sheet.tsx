@@ -93,9 +93,14 @@ export function EnquirySheet() {
   const { overlay, enquiry, closeOverlay } = useUi()
   const mobile = useSyncExternalStore(subscribe, () => window.matchMedia(mobileQuery).matches, () => false)
   return <Sheet open={overlay === "enquiry"} onOpenChange={(open) => { if (!open && useUi.getState().overlay === "enquiry") closeOverlay() }}>
-    <SheetContent side={mobile ? "bottom" : "right"} data-lenis-prevent onCloseAutoFocus={restoreOverlayFocus} className="overlay-scroll max-h-[92dvh] overflow-y-auto md:max-h-dvh md:w-[29rem]! md:max-w-none!">
+    <SheetContent side={mobile ? "bottom" : "right"} data-lenis-prevent onOpenAutoFocus={(event) => {
+        if (mobile) {
+          event.preventDefault()
+          document.getElementById("enquiry-title")?.focus()
+        }
+      }} onCloseAutoFocus={restoreOverlayFocus} className="overlay-scroll max-h-[92dvh] overflow-y-auto md:max-h-dvh md:w-[29rem]! md:max-w-none!">
       <SheetHeader className="p-6 pt-12">
-        <SheetTitle className="font-display text-4xl">Enquire about a stone</SheetTitle>
+        <SheetTitle id="enquiry-title" tabIndex={-1} className="font-display text-4xl">Enquire about a stone</SheetTitle>
         <SheetDescription>{site.replyTime} This preview does not send messages.</SheetDescription>
       </SheetHeader>
       <EnquiryForm key={enquiry.map(({ slug }) => slug).join(",")} stones={enquiry} />

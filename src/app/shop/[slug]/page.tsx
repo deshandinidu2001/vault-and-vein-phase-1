@@ -7,9 +7,40 @@ import { StoneCard } from "@/components/shop/stone-card"
 import { StonePrice } from "@/components/shop/stone-price"
 import { Badge } from "@/components/ui/badge"
 import { getRelated, getStoneBySlug, getStoneSlugs } from "@/lib/data"
-import { gemNames } from "@/types/stone"
+import { gemNames, type Stone } from "@/types/stone"
+import { site } from "@/config/site"
+import { pageMetadata, serializeJsonLd } from "@/lib/seo"
 
 type Props = { params: Promise<{ slug: string }> }
+
+export async function generateMetadata({ params }: Props) {
+  const { slug } = await params
+  const stone = await getStoneBySlug(slug)
+  if (!stone) return { title: "Stone not found", robots: { index: false, follow: true } }
+  return pageMetadata(stone.name, stone.description, "/shop/" + stone.slug)
+}
+
+function ProductData({ stone }: { stone: Stone }) {
+  const path = "/shop/" + stone.slug
+  const product = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: stone.name,
+    sku: stone.id,
+    category: gemNames[stone.gem_type],
+    color: stone.colour,
+    description: "Sample listing. " + stone.description,
+    url: new URL(path, site.url).href,
+    image: new URL("/images/stones/" + stone.slug, site.url).href,
+    brand: { "@type": "Brand", name: site.name },
+    additionalProperty: [
+      { "@type": "PropertyValue", name: "Cut", value: stone.cut },
+      { "@type": "PropertyValue", name: "Carat", value: stone.carat },
+      { "@type": "PropertyValue", name: "Illustrative price (LKR)", value: stone.price_lkr },
+    ],
+  }
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(product) }} />
+}
 
 export async function generateStaticParams() {
   return (await getStoneSlugs()).map((slug) => ({ slug }))
@@ -28,6 +59,7 @@ export default async function StoneDetail({ params }: Props) {
   ]
 
   return <article className="wrap section page-top space-y-10">
+    <ProductData stone={stone} />
     <Link href="/shop" className="line-link text-sm"><ArrowLeft size={18} aria-hidden="true" /> Back to the shop</Link>
     <div className="film-grid !items-start">
       <ProductGallery stone={stone} />

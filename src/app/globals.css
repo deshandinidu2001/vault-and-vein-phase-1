@@ -134,3 +134,11 @@
   .header-actions .header-enquiry { display: inline-flex; }
   .header-actions .mobile-menu { display: none; }
 }
+
+.mobile-nav-sheet[data-slot=sheet-content] { background: #06251c; color: #f6f1e7; }
+.mobile-nav-sheet [data-slot=sheet-close]:hover { background: #f6f1e720; color: #f6f1e7; }
+[data-slot=sheet-content] { padding-bottom: env(safe-area-inset-bottom); }
+@media (max-width: 1023px) {
+  .hero-inner { gap: 1.5rem; }
+  .hero-scroll { position: static; justify-self: center; }
+}
