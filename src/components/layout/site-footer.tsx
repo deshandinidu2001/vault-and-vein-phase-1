@@ -32,21 +32,15 @@ export function SiteFooter() {
         const box = mark.getBoundingClientRect()
         const viewportHeight = window.innerHeight
         const entry = Math.min(42, box.height * .14)
-        let progress: number
-
-        if (getComputedStyle(element).position === "sticky") {
-          // The page surface covers the wordmark until it scrolls out of the way.
-          const edge = surface.getBoundingClientRect().bottom
-          const start = Math.min(viewportHeight, box.bottom) - entry
-          const end = Math.max(0, box.top - Math.min(144, box.height * .45))
-          progress = (start - edge) / Math.max(1, start - end)
-        } else {
-          // In normal flow the mark enters from the bottom of the viewport.
-          const tail = element.getBoundingClientRect().bottom - box.bottom
-          const distance = box.height + Math.min(88, Math.max(0, tail)) - entry
-          progress = (viewportHeight - box.top - entry) / Math.max(1, distance)
-        }
-
+        const overscroll = Math.min(88, box.height * .36)
+        const reveal = getComputedStyle(element).position === "sticky"
+          ? Math.min(viewportHeight, box.bottom) - surface.getBoundingClientRect().bottom
+          : viewportHeight - box.top
+        const remaining = getComputedStyle(element).position === "sticky"
+          ? element.offsetHeight - (element.getBoundingClientRect().bottom - box.bottom)
+          : box.height + element.getBoundingClientRect().bottom - box.bottom
+        const distance = Math.min(box.height + overscroll, remaining) - entry
+        const progress = (reveal - entry) / Math.max(1, distance)
         mark.style.setProperty("--footer-fill", (gsap.utils.clamp(0, 1, progress) * 100).toFixed(2) + "%")
       }
 
@@ -56,6 +50,7 @@ export function SiteFooter() {
         end: "max",
         onUpdate: updateFill,
         onRefresh: updateFill,
+        onLeave: updateFill,
       })
       updateFill()
 

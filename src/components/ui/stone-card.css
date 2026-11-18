@@ -5,3 +5,6 @@
 .dark-panel .stone-art { background: radial-gradient(ellipse at 55% 45%,#245242,#0b2b22 75%); }
 .stone-art img { padding: 5%; transition: scale .4s var(--easing); }
 .stone-card:hover .stone-art img, .stone-card:focus-within .stone-art img { scale: 1.07; }
+.product-gallery .product-view-tabs { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); width: min(100%,24rem); height: auto; gap: .25rem; padding: .25rem; border: 1px solid #0b3d2e1f; border-radius: 999px; }
+.product-gallery .product-view-tab { height: auto; min-height: 44px; padding-inline: .35rem; border-radius: 999px; color: #33463b; }
+.product-gallery .product-view-tab[data-state=active] { background: #0b3d2e; color: #f6f1e7; }

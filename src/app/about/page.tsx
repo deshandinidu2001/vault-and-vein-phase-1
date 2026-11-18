@@ -21,24 +21,29 @@ const care = [
 ]
 
 export default function About() {
-  return <Reveal>
-    <section className="wrap section page-top film-grid">
-      <div className="grid gap-6">
-        <p className="eyebrow text-[#785520]" data-reveal>Our story</p>
-        <h1 data-split>Formed by colour.</h1>
-        <p data-reveal>Vault &amp; Vein takes its cue from Sri Lanka’s gemstone heritage. A stone’s colour, shape and small irregularities can tell you as much as its name. We built the collection around the pleasure of looking closely.</p>
-      </div>
-      <div className="photo aspect-[4/5] md:aspect-square" data-image-reveal>
-        <ResponsivePhoto photo={photos.aboutHeritage} sizes="(min-width: 768px) 50vw, 95vw" priority />
+  return <Reveal className="home-content">
+    <section className="home-masthead" aria-labelledby="about-title">
+      <div className="hero-panel">
+        <div className="hero-media"><div className="hero-art"><div className="hero-frame" data-supplied-photo="true">
+          <ResponsivePhoto photo={photos.aboutHeritage} sizes="100vw" priority />
+        </div></div></div>
+        <div className="hero-intro">
+          <p className="eyebrow">Our story</p>
+          <h1 id="about-title">Formed by colour.</h1>
+          <div className="hero-actions-copy">
+            <p>Vault &amp; Vein takes its cue from Sri Lanka’s gemstone heritage. We built the collection around the pleasure of looking closely at a stone’s colour, cut and character.</p>
+            <div className="hero-actions"><Link className="pill hero-primary" href="/shop">Explore the collection</Link></div>
+          </div>
+        </div>
       </div>
     </section>
-    <section className="section marble dark-panel">
-      <div className="wrap film-grid">
+    <section className="wrap section">
+      <div className="film-grid">
         <div className="photo aspect-[4/3]" data-image-reveal><ResponsivePhoto photo={photos.aboutCraft} sizes="(min-width: 768px) 50vw, 95vw" /></div>
         <div className="grid gap-6">
           <SectionHeading eyebrow="From rough to polish">The work in every facet.</SectionHeading>
-          <dl className="divide-y divide-cream/20">
-            {process.map(([title, text]) => <div className="grid gap-2 py-4" key={title} data-reveal><dt className="font-semibold">{title}</dt><dd className="text-cream/85">{text}</dd></div>)}
+          <dl className="divide-y divide-emerald/20">
+            {process.map(([title, text]) => <div className="grid gap-2 py-4" key={title} data-reveal><dt className="font-semibold">{title}</dt><dd className="text-muted-foreground">{text}</dd></div>)}
           </dl>
         </div>
       </div>
