@@ -1,33 +1,36 @@
-"use client"
-
-import { useRef } from "react"
+import { ArrowUpRight } from "lucide-react"
 import { photos } from "@/config/images"
 import { site } from "@/config/site"
 import { ResponsivePhoto } from "@/components/ui/responsive-photo"
 import { EnquireButton } from "@/components/layout/enquire-button"
-import { gsap, useGSAP } from "@/components/animation/motion-provider"
 
 export function FinalCall() {
-  const section = useRef<HTMLElement>(null)
-  useGSAP(() => {
-    const media = gsap.matchMedia()
-    media.add("(prefers-reduced-motion: no-preference)", () => {
-      gsap.fromTo("[data-cta-word]", { opacity: .2 }, { opacity: 1, ease: "none", stagger: .2,
-        scrollTrigger: { trigger: section.current, start: "top 90%", end: "center 55%", scrub: true },
-      })
-    })
-    return () => media.revert()
-  }, { scope: section })
-
-  return <section ref={section} className="wrap section">
-    <div className="editorial-card editorial-card-closing marble dark-panel film-grid">
-      <div className="editorial-copy grid justify-items-start gap-4">
-        <p className="eyebrow" data-reveal>Make time for a stone</p>
-        <h2 aria-label="Ready when you are."><span aria-hidden="true"><span data-cta-word>Ready</span>{" "}<span data-cta-word>when</span>{" "}<span data-cta-word>you</span>{" "}<span data-cta-word>are.</span></span></h2>
-        <EnquireButton className="pill-gold" />
-        <p className="text-sm text-cream/80">{site.replyTime}</p>
+  return (
+    <section className="wrap section" aria-labelledby="closing-title">
+      <div className="editorial-card closing-banner">
+        <svg className="closing-sketch" viewBox="0 0 640 640" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
+          <circle cx="320" cy="320" r="289" />
+          <circle cx="320" cy="320" r="254" />
+          <path d="m320 78 167 71 73 171-73 171-167 71-167-71-73-171 73-171Z" />
+          <path d="m320 78 99 143 141 99-141 99-99 143-99-143-141-99 141-99Z" />
+          <path d="m221 221 99-43 99 43 43 99-43 99-99 43-99-43-43-99Z" />
+        </svg>
+        <div className="closing-copy">
+          <p className="eyebrow">Make time for a stone</p>
+          <h2 id="closing-title">Ready when you are.</h2>
+          <p>Start with a colour you love, a setting you have in mind or a budget you’d like to work within. We can help you narrow down the possibilities.</p>
+          <div className="closing-action">
+            <EnquireButton className="pill-primary closing-enquiry">
+              Enquire about a stone
+              <span className="action-disc"><ArrowUpRight size={18} aria-hidden="true" /></span>
+            </EnquireButton>
+            <p>{site.replyTime}</p>
+          </div>
+        </div>
+        <div className="closing-arch">
+          <ResponsivePhoto photo={photos.closing} sizes="(min-width: 1600px) 624px, (min-width: 768px) 44vw, 90vw" />
+        </div>
       </div>
-      <div className="photo editorial-media" data-image-reveal><ResponsivePhoto photo={photos.closing} sizes="(min-width: 768px) 50vw, 95vw" /></div>
-    </div>
-  </section>
+    </section>
+  )
 }

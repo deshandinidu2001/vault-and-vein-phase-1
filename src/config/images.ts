@@ -25,7 +25,6 @@ export const editorialPhotos = {
   parcels: editorial("parcels", "Loose pink, wine and copper gems beside jeweller’s tweezers", "72% 52%"),
   cut: editorial("cut", "A golden faceted gemstone and a brass loupe on dark stone", "74% 49%"),
   bench: editorial("bench", "Rough and cut gemstones beside a loupe on a jeweller’s bench", "60% 50%"),
-  care: editorial("care", "A blue sapphire on a folded cleaning cloth beside an evergreen pouch", "50% 58%"),
   closing: editorial("closing", "A teal gemstone in an open evergreen velvet presentation box", "50% 57%"),
 }
 
@@ -35,7 +34,14 @@ export const photos = {
   collectionRare: { ...editorialPhotos.rarities, origin: "88% 50%", mobileOrigin: "91% 50%" },
   collectionParcels: { ...editorialPhotos.parcels, origin: "100% 52%", mobileOrigin: "94% 52%" },
   engagement: editorialPhotos.engagement,
-  care: editorialPhotos.care,
+  care: {
+    src: "/images/editorial/after the sale.jpg",
+    srcMobile: "/images/editorial/after the sale.jpg",
+    alt: "A blue sapphire on a soft cloth beside an evergreen pouch",
+    origin: "63% 51%",
+    mobileOrigin: "82% 52%",
+    zoom: 1,
+  },
   closing: editorialPhotos.closing,
   aboutHeritage: { ...sapphirePhoto, origin: "63% 47%", zoom: 1.08 },
   aboutCraft: editorialPhotos.bench,

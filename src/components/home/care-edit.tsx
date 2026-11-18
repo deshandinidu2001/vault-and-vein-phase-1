@@ -5,16 +5,23 @@ import { ResponsivePhoto } from "@/components/ui/responsive-photo"
 import { SectionHeading } from "@/components/ui/section-heading"
 
 export function CareEdit() {
-  return <section id="care" className="wrap section">
-    <div className="film-grid editorial-card editorial-card-care">
-      <div className="editorial-copy grid gap-5">
-        <SectionHeading eyebrow="After the sale">Keep its colour close.</SectionHeading>
-        <p data-reveal>Store a gemstone separately, check its setting from time to time and choose a cleaning method suited to the gem and any treatment. A little care makes a difference over years of wear.</p>
-        <Link href="/about#care" className="line-link w-fit" data-reveal>Read the care guide <ArrowRight size={19} aria-hidden="true" /></Link>
+  return (
+    <section id="care" className="wrap section" aria-label="After the sale">
+      <div className="editorial-card care-banner">
+        <div className="care-backdrop">
+          <ResponsivePhoto photo={photos.care} sizes="(min-width: 1600px) 1520px, 94vw" />
+        </div>
+        <div className="care-banner-copy">
+          <SectionHeading eyebrow="After the sale">Keep its colour close.</SectionHeading>
+          <p>A soft cloth and a separate pouch are a good start. Choose a cleaning method that suits your gemstone, its treatment and its setting.</p>
+          <ul className="care-tips">
+            <li>Wipe gently with a soft, lint-free cloth.</li>
+            <li>Store the stone apart from other jewellery.</li>
+            <li>Check with a jeweller before using steam or ultrasonic cleaners.</li>
+          </ul>
+          <Link href="/about#care" className="pill pill-primary w-fit">Read the care guide <ArrowRight size={18} aria-hidden="true" /></Link>
+        </div>
       </div>
-      <div className="photo editorial-media" data-image-reveal>
-        <ResponsivePhoto photo={photos.care} sizes="(min-width: 768px) 50vw, 95vw" />
-      </div>
-    </div>
-  </section>
+    </section>
+  )
 }
