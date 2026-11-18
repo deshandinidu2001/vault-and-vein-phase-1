@@ -17,7 +17,8 @@ Open http://localhost:3000.
 
 - Edit `src/config/hero.ts` for the five hero slides.
 - Edit `src/config/images.ts` for collection, engagement, care, closing and About photos.
-- Each slot has a desktop path, mobile path, alt text, zoom and crop origin. The slots marked `TEMP: replace with real photo` currently reuse the supplied sapphire photo. Store replacements under `public/images/` and use paths starting at `/images/`.
+- Each slot has a desktop path, mobile path, alt text, zoom and crop origin. Store replacements under `public/images/` and use paths starting at `/images/`.
+- The supplied sapphire opens the hero. The generated [editorial images](docs/editorial-images.md) illustrate collection themes and the craft behind a stone. Use separate photography for individual listings.
 - Sample stone illustrations and models use the cut and tint from `src/data/stones.ts`. The original brand JPEGs are in `public/brand/`.
 
 ## Edit store settings

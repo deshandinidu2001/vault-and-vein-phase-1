@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, type KeyboardEvent } from "react"
+import { useEffect, useRef, useState, type KeyboardEvent } from "react"
 import Link from "next/link"
 import { ArrowDown, ArrowRight, ArrowUpRight, BadgeCheck, Gem, Layers3, Sparkles } from "lucide-react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
@@ -18,6 +18,11 @@ const features = [
 export function HeroSlider() {
   const reduced = useReducedMotion()
   const [current, setCurrent] = useState(0)
+  const [visible, setVisible] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const [manuallySelected, setManuallySelected] = useState(false)
+  const panel = useRef<HTMLDivElement>(null)
   const touchStart = useRef<{ x: number; y: number } | null>(null)
   const slide = heroSlides[current]
   const total = heroSlides.length
@@ -26,24 +31,51 @@ export function HeroSlider() {
     return (index + total) % total
   }
 
+  useEffect(() => {
+    const element = panel.current
+    if (!element) return
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting && entry.intersectionRatio >= .25), { threshold: .25 })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (reduced || !visible || hovered || focused || manuallySelected) return
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") setCurrent((index) => (index + 1) % total)
+    }, 1500)
+    return () => window.clearInterval(timer)
+  }, [reduced, visible, hovered, focused, manuallySelected, total])
+
+  function chooseImage(index: number) {
+    setManuallySelected(true)
+    setCurrent(slideIndex(index))
+  }
+
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return
     event.preventDefault()
     const next = slideIndex(current + (event.key === "ArrowLeft" ? -1 : 1))
-    setCurrent(next)
+    chooseImage(next)
     event.currentTarget.querySelectorAll("button")[next]?.focus()
   }
 
   return (
     <section className="home-masthead" aria-labelledby="hero-title">
-      <div className="hero-panel">
+      <div ref={panel} className="hero-panel"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onFocusCapture={() => setFocused(true)}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false)
+        }}>
         <div className="hero-intro">
           <p className="eyebrow hero-enter">Fine cut &amp; polished gemstones</p>
           <h1 id="hero-title"><span className="hero-mask"><span>Rarity,</span></span>{" "}<span className="hero-mask"><span>Revealed.</span></span></h1>
           <div className="hero-enter hero-actions-copy">
             <p>Discover gemstones with a point of view, inspired by Sri Lanka’s heritage of colour and craft.</p>
             <div className="hero-actions">
-              <Link href="/shop" className="pill pill-primary">
+              <Link href="/shop" className="pill hero-primary">
                 Explore the Collection <span className="action-disc"><ArrowUpRight size={18} aria-hidden="true" /></span>
               </Link>
               <EnquireButton className="hero-secondary">
@@ -66,19 +98,20 @@ export function HeroSlider() {
               const dx = touch.clientX - start.x
               const dy = touch.clientY - start.y
               if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy)) {
-                setCurrent((index) => slideIndex(index + (dx < 0 ? 1 : -1)))
+                chooseImage(current + (dx < 0 ? 1 : -1))
               }
             }}
             onTouchCancel={() => { touchStart.current = null }}>
             <AnimatePresence initial={false}>
-              <motion.div key={slide.title} className="hero-frame"
+              <motion.div key={slide.title} className="hero-frame" data-supplied-photo={current === 0}
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                transition={{ duration: reduced ? 0 : .5, ease: "easeInOut" }}>
-                <ResponsivePhoto photo={slide} sizes="(min-width: 900px) 56vw, calc(100vw - 24px)" priority={current === 0} />
+                transition={{ duration: reduced ? 0 : .35, ease: "easeInOut" }}>
+                <ResponsivePhoto photo={slide} sizes="(min-width: 1920px) 1888px, calc(100vw - 32px)" priority={current === 0} />
               </motion.div>
             </AnimatePresence>
           </div>
-          <div className="hero-dots" role="group" aria-label="Choose an image" onKeyDown={onKeyDown}>
+          <div className="hero-dots" role="group" aria-label="Choose an image" aria-describedby="hero-rotation-note" onKeyDown={onKeyDown}>
+            <span id="hero-rotation-note" className="sr-only">Choosing an image stops automatic rotation.</span>
             {heroSlides.map((item, index) => (
               <button
                 type="button"
@@ -86,7 +119,7 @@ export function HeroSlider() {
                 className="hero-dot"
                 aria-label={"Show image " + (index + 1) + " of " + total + ": " + item.title}
                 aria-pressed={current === index}
-                onClick={() => setCurrent(index)}
+                onClick={() => chooseImage(index)}
               />
             ))}
           </div>

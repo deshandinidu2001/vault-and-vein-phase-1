@@ -14,6 +14,7 @@ import { gemNames, type Stone } from "@/types/stone"
 
 const filters = [["all", "All"], ["sapphire", "Sapphire"], ["spinel", "Spinel"], ["garnet", "Garnet"], ["rare", "Rare"]] as const
 type Filter = (typeof filters)[number][0]
+const previewSize = 4
 
 export function GemGallery({ stones }: { stones: Stone[] }) {
   const [filter, setFilter] = useState<Filter>("all")
@@ -25,7 +26,8 @@ export function GemGallery({ stones }: { stones: Stone[] }) {
   const currency = useUi((state) => state.currency)
   const openEnquiry = useUi((state) => state.openEnquiry)
   const visible = stones.filter((stone) => filter === "all" || (filter === "rare"
-    ? stone.collections.includes("rare") : stone.gem_type === filter))
+    ? stone.collections.includes("rare") : stone.gem_type === filter)).slice(0, previewSize)
+  const shopLink = filter === "all" ? "/shop" : filter === "rare" ? "/shop?collection=rare" : "/shop?type=" + filter
   const selection = visible.findIndex(({ slug }) => slug === selected)
   const stone = visible[selection]
 
@@ -43,7 +45,7 @@ export function GemGallery({ stones }: { stones: Stone[] }) {
 
   return (
     <section id="gallery" className="section dark-panel">
-      <div className="wrap space-y-8">
+      <div className="wrap gallery-preview">
         <div className="gallery-intro">
           <SectionHeading eyebrow="The gem gallery">Find your next<br />signature stone.</SectionHeading>
           <p className="text-cream/80" data-reveal>Explore the cuts and colour families in our sample collection. Select a stone to see its details.</p>
@@ -63,7 +65,7 @@ export function GemGallery({ stones }: { stones: Stone[] }) {
           const end = track.scrollLeft + track.clientWidth >= track.scrollWidth - 2
           setRailEdges((current) => current.start === start && current.end === end ? current : { start, end })
         }}>
-          <AnimatePresence initial={false}>
+          <AnimatePresence initial={false} mode="popLayout">
             {visible.map((item, index) => <motion.li key={item.id} layout={!reduced}
               initial={{ opacity: 0, y: reduced ? 0 : 12 }} animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }} transition={{ duration: reduced ? 0 : .3, delay: reduced ? 0 : Math.min(index, 5) * .06 }} className="gallery-card">
@@ -83,7 +85,7 @@ export function GemGallery({ stones }: { stones: Stone[] }) {
             </motion.li>)}
           </AnimatePresence>
         </ul>
-        {visible.length > 1 && <div className="gallery-rail-controls">
+        {visible.length > 1 && <div className="gallery-rail-controls" data-single-tablet-row={visible.length <= 2}>
           <button className="icon-button" type="button" aria-label="Scroll to previous gallery card" onClick={() => moveRail(-1)} disabled={railEdges.start}>
             <ArrowLeft size={20} aria-hidden="true" />
           </button>
@@ -92,7 +94,10 @@ export function GemGallery({ stones }: { stones: Stone[] }) {
           </button>
         </div>}
         {!visible.length && <p role="status">There are no sample stones in this selection.</p>}
-        <p className="text-sm text-cream/80">Sample stones shown until live stock is added.</p>
+        <div className="gallery-footer">
+          <p className="text-sm text-cream/80">A preview of the sample catalogue.</p>
+          <Link href={shopLink} className="pill pill-gold">Explore more in the shop <ArrowUpRight size={18} aria-hidden="true" /></Link>
+        </div>
       </div>
       <Dialog open={!!stone} onOpenChange={(open) => { if (!open) setSelected(null) }}>
         <DialogContent data-lenis-prevent className="overlay-scroll max-h-[90dvh] max-w-3xl! overflow-y-auto rounded-3xl p-6 sm:p-8"

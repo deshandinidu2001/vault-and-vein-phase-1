@@ -7,30 +7,36 @@ export type PhotoSlot = {
   zoom: number
 }
 
-// TEMP: replace with real photo in each slot.
 export const sapphirePhoto = {
   src: "/images/hero/hero-01-sapphire.jpg",
   srcMobile: "/images/hero/hero-01-sapphire-mobile.jpg",
   alt: "A faceted blue sapphire catching the light",
 }
 
+function editorial(name: string, alt: string, origin: string, mobileOrigin = origin): PhotoSlot {
+  const src = "/images/editorial/" + name + ".webp"
+  return { src, srcMobile: src, alt, origin, mobileOrigin, zoom: 1 }
+}
+
+// Editorial illustrations of the collection themes, not photographs of listed stock.
+export const editorialPhotos = {
+  engagement: editorial("engagement", "A peach faceted gem beside a gold setting on evergreen velvet", "73% 50%"),
+  rarities: editorial("rarities", "Teal and plum cut gemstones on dark slate", "73% 50%"),
+  parcels: editorial("parcels", "Loose pink, wine and copper gems beside jeweller’s tweezers", "72% 52%"),
+  cut: editorial("cut", "A golden faceted gemstone and a brass loupe on dark stone", "74% 49%"),
+  bench: editorial("bench", "Rough and cut gemstones beside a loupe on a jeweller’s bench", "60% 50%"),
+  care: editorial("care", "A blue sapphire on a folded cleaning cloth beside an evergreen pouch", "50% 58%"),
+  closing: editorial("closing", "A teal gemstone in an open evergreen velvet presentation box", "50% 57%"),
+}
+
 export const photos = {
-  // TEMP: replace with real photo
   collectionSapphire: { ...sapphirePhoto, origin: "72% 50%", zoom: 1.07 },
-  // TEMP: replace with real photo
-  collectionEngagement: { ...sapphirePhoto, origin: "86% 40%", zoom: 1.16 },
-  // TEMP: replace with real photo
-  collectionRare: { ...sapphirePhoto, origin: "64% 63%", zoom: 1.23 },
-  // TEMP: replace with real photo
-  collectionParcels: { ...sapphirePhoto, origin: "77% 57%", zoom: 1.11 },
-  // TEMP: replace with real photo
-  engagement: { ...sapphirePhoto, origin: "89% 44%", zoom: 1.14 },
-  // TEMP: replace with real photo
-  care: { ...sapphirePhoto, origin: "68% 55%", zoom: 1.21 },
-  // TEMP: replace with real photo
-  closing: { ...sapphirePhoto, origin: "84% 60%", zoom: 1.18 },
-  // TEMP: replace with real photo
+  collectionEngagement: editorialPhotos.engagement,
+  collectionRare: { ...editorialPhotos.rarities, origin: "88% 50%", mobileOrigin: "91% 50%" },
+  collectionParcels: { ...editorialPhotos.parcels, origin: "100% 52%", mobileOrigin: "94% 52%" },
+  engagement: editorialPhotos.engagement,
+  care: editorialPhotos.care,
+  closing: editorialPhotos.closing,
   aboutHeritage: { ...sapphirePhoto, origin: "63% 47%", zoom: 1.08 },
-  // TEMP: replace with real photo
-  aboutCraft: { ...sapphirePhoto, origin: "81% 64%", zoom: 1.24 },
+  aboutCraft: editorialPhotos.bench,
 } satisfies Record<string, PhotoSlot>

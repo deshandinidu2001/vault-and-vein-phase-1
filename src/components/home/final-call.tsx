@@ -21,9 +21,9 @@ export function FinalCall() {
 
   return <section ref={section} className="wrap section">
     <div className="editorial-card editorial-card-closing marble dark-panel film-grid">
-      <div className="editorial-copy grid justify-items-start gap-6">
+      <div className="editorial-copy grid justify-items-start gap-4">
         <p className="eyebrow" data-reveal>Make time for a stone</p>
-        <h2 aria-label="Ready when you are."><span aria-hidden="true"><span data-cta-word>Ready</span>{" "}<span data-cta-word>when</span><br /><span data-cta-word>you</span>{" "}<span data-cta-word>are.</span></span></h2>
+        <h2 aria-label="Ready when you are."><span aria-hidden="true"><span data-cta-word>Ready</span>{" "}<span data-cta-word>when</span>{" "}<span data-cta-word>you</span>{" "}<span data-cta-word>are.</span></span></h2>
         <EnquireButton className="pill-gold" />
         <p className="text-sm text-cream/80">{site.replyTime}</p>
       </div>
