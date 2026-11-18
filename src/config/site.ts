@@ -8,7 +8,7 @@ export const site = {
   country: "Sri Lanka",
   mapEmbedUrl: "https://maps.google.com/maps?q=Sri%20Lanka&z=7&output=embed",
   email: "",
-  whatsappNumber: "",
+  whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "",
   businessHours: "",
   returnWindowDays: null as number | null,
   shippingNote: "Ask about delivery to your destination, available insurance and the full shipping cost before placing an order.",
@@ -36,7 +36,7 @@ export const returnNote = site.returnWindowDays === null
   : "The return window is " + site.returnWindowDays + " days. Ask us to confirm eligibility and return shipping before ordering."
 
 export const faq = [
-  { question: "How do I buy a stone?", answer: "Open a listing and enquire about it, or request several stones together from your cart. An enquiry is the start of a conversation about availability, the stone and delivery." },
+  { question: "How do I buy a stone?", answer: "Add an available stone to your cart. If checkout is available, you can pay in LKR through PayHere for delivery within Sri Lanka. You can also enquire about a stone or your shortlist." },
   { question: "Are the stones certified?", answer: "We indicate when a lab report is available. Ask to see the report for the individual stone and review its findings before deciding." },
   { question: "How do shipping and insurance work?", answer: site.shippingNote },
   { question: "What is the returns policy?", answer: returnNote },
@@ -67,18 +67,18 @@ export const policies = {
   },
   privacy: {
     title: "Privacy",
-    summary: "This preview keeps your shortlist in your browser and lets you try the enquiry and contact forms.",
+    summary: "Your shortlist is stored in your browser so you can resume it later.",
     sections: [
-      { heading: "Preview forms and cart", body: "The forms validate details on this site without transmitting the submitted form data. The cart uses browser storage so the shortlist can be restored when you return." },
+      { heading: "Messages and checkout", body: "We use the contact and shipping details you submit to respond to enquiries and process orders. PayHere handles payment details on its hosted checkout." },
       { heading: "External services", body: "The contact map is provided by Google Maps. If you follow an external link or use its services, that provider’s privacy terms apply." },
     ],
   },
   terms: {
     title: "Terms",
-    summary: "Vault & Vein’s Phase 1 site presents a sample catalogue for browsing.",
+    summary: "Review the price, availability and individual stone details before ordering.",
     sections: [
-      { heading: "Illustrative listings", body: "Names, prices, report flags and availability are examples. Images and 3D models illustrate the cut and colour family. They are not records of individual stones offered for sale." },
-      { heading: "Enquiries and purchases", body: "The preview does not accept payment or confirm orders. Before agreeing to any future purchase, review the individual stone, price, availability and written delivery and return terms." },
+      { heading: "Illustrative listings", body: "Listings marked as samples are for browsing. Images and 3D models illustrate the cut and colour family." },
+      { heading: "Enquiries and purchases", body: "If checkout is available, the order status page confirms when PayHere has verified payment. Before paying, confirm delivery and return terms for your order." },
     ],
   },
 } as const

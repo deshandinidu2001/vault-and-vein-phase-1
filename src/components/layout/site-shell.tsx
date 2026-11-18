@@ -4,6 +4,7 @@ import { EnquirySheet } from "./enquiry-sheet"
 import { SiteFooter } from "./site-footer"
 import { SiteHeader } from "./site-header"
 import { Toaster } from "sonner"
+import { checkoutConfig } from "@/lib/checkout"
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   return <>
@@ -13,7 +14,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
       <div className="site-page-surface">{children}</div>
       <SiteFooter />
     </div>
-    <CartSheet />
+    <CartSheet paymentsEnabled={Boolean(checkoutConfig())} />
     <EnquirySheet />
     <Toaster theme="light" position="bottom-center" />
   </>

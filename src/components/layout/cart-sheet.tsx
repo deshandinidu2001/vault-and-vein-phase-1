@@ -8,17 +8,19 @@ import { StonePrice } from "@/components/shop/stone-price"
 import { restoreOverlayFocus, useUi } from "@/store/ui"
 import { useCart } from "@/store/cart"
 
-export function CartSheet() {
+export function CartSheet({ paymentsEnabled }: { paymentsEnabled: boolean }) {
   const { overlay, closeOverlay, openEnquiry } = useUi()
   const { items, remove } = useCart()
   const total = items.reduce((sum, item) => sum + item.price_lkr, 0)
+  const hasSamples = items.some(({ is_sample }) => is_sample !== false)
+  const canCheckout = paymentsEnabled && !hasSamples && items.length > 0 && items.length <= 12
 
   return (
     <Sheet open={overlay === "cart"} onOpenChange={(open) => { if (!open && useUi.getState().overlay === "cart") closeOverlay() }}>
       <SheetContent side="right" data-lenis-prevent onCloseAutoFocus={restoreOverlayFocus} className="overlay-scroll w-[min(100vw,28rem)]! max-w-none! overflow-y-auto">
         <SheetHeader className="px-6 pt-12">
           <SheetTitle className="font-display text-4xl">Your cart</SheetTitle>
-          <SheetDescription>Shortlist sample stones for an enquiry.</SheetDescription>
+          <SheetDescription>{paymentsEnabled ? "Review your stones before checkout or send an enquiry." : "Shortlist stones for an enquiry."}</SheetDescription>
         </SheetHeader>
         {items.length === 0 ? <div className="space-y-5 px-6 pb-8">
           <p>Your cart is empty.</p>
@@ -38,9 +40,9 @@ export function CartSheet() {
               </button>
             </li>)}
           </ul>
-          <div className="flex flex-wrap justify-between gap-2 font-semibold"><span>Sample total</span><StonePrice lkr={total} /></div>
-          {/* PHASE 2: replace with checkout */}
-          <button type="button" className="pill pill-primary" onClick={() => openEnquiry(items)}>Request these stones</button>
+          <div className="flex flex-wrap justify-between gap-2 font-semibold"><span>{hasSamples ? "Sample total" : "Stone subtotal"}</span><StonePrice lkr={total} /></div>
+          {canCheckout && <Link href="/checkout" className="pill pill-primary" onClick={closeOverlay}>Go to checkout</Link>}
+          <button type="button" className={canCheckout ? "pill" : "pill pill-primary"} onClick={() => openEnquiry(items)}>Request these stones</button>
         </div>}
       </SheetContent>
     </Sheet>
