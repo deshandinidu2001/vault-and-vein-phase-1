@@ -44,9 +44,12 @@
 .hero-actions-copy p { max-width: 38ch; color: #f6f1e7; font-size: clamp(.95rem, 1.2vw, 1.15rem); }
 .hero-actions { display: flex; flex-wrap: wrap; gap: .65rem; pointer-events: auto; }
 .hero-actions .hero-primary { background: #f6f1e7; border-color: #f6f1e7; color: #06251c; --pill-fill: #e9cb88; --pill-ink: #06251c; }
-.hero-actions .hero-secondary { border-color: #f6f1e7; color: #f6f1e7; --pill-fill: #f6f1e7; --pill-ink: #06251c; }
+.hero-actions .hero-secondary { border-color: #f6f1e7; color: #f6f1e7; transition: none; }
+.hero-actions .hero-secondary::before { content: none; }
+.hero-actions .hero-secondary:is(:hover, :focus-visible) { background-color: #f6f1e7; color: #06251c; }
 .hero-primary .action-disc { background-color: #e1e6d7; }
 .hero-secondary .action-disc { background-color: #f6f1e7; }
+.hero-secondary:is(:hover, :focus-visible) .action-disc { background-color: #e1e6d7; }
 
 .hero-media { position: absolute; inset: 0; min-width: 0; }
 .hero-art {

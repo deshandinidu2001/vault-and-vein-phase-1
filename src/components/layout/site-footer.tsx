@@ -31,10 +31,15 @@ export function SiteFooter() {
       const updateFill = () => {
         const box = mark.getBoundingClientRect()
         const sticky = getComputedStyle(element).position === "sticky"
-        const top = Math.max(0, box.top, sticky ? surface.getBoundingClientRect().bottom : 0)
-        const bottom = Math.min(window.innerHeight, box.bottom)
+        const distanceAfterReveal = sticky
+          ? box.top - surface.getBoundingClientRect().bottom
+          : window.innerHeight - box.bottom
+        const footerBox = element.getBoundingClientRect()
+        const availableScroll = sticky ? box.top - footerBox.top : footerBox.bottom - box.bottom
+        const leadIn = 12
+        const fillDistance = Math.max(1, Math.min(112, availableScroll - leadIn))
         const atEnd = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2
-        const progress = atEnd ? 1 : (bottom - top) / Math.max(1, box.height)
+        const progress = atEnd ? 1 : (distanceAfterReveal - leadIn) / fillDistance
         mark.style.setProperty("--footer-fill", (gsap.utils.clamp(0, 1, progress) * 100).toFixed(2) + "%")
       }
 

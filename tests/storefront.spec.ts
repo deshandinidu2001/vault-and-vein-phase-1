@@ -20,6 +20,11 @@ test("hero slide controls, gallery filtering and a keyboard-operable FAQ", async
   if (!isMobile) {
     await third.press("ArrowRight")
     await expect(dots.getByRole("button", { name: /Show image 4 of 5/ })).toBeFocused()
+    const enquiryButton = page.locator(".hero-actions").getByRole("button", { name: "Enquire about a stone" })
+    await expect(enquiryButton).toHaveCSS("color", "rgb(246, 241, 231)")
+    await enquiryButton.hover()
+    await expect(enquiryButton).toHaveCSS("color", "rgb(6, 37, 28)")
+    await expect(enquiryButton).toHaveCSS("background-color", "rgb(246, 241, 231)")
   }
 
   const gallery = page.locator("#gallery")
@@ -163,27 +168,34 @@ test("contact validation and submission, admin guard and safe preview checkout",
   expect((await request.get("/order/7a13082e-18aa-4a07-8300-8d617943aef3")).status()).toBe(404)
 })
 
-async function wordmarkProgress(page: Page, percent: number) {
-  await page.evaluate((fraction) => {
+async function scrollPastWordmarkReveal(page: Page, offset: number) {
+  await page.evaluate(async (distance) => {
     const mark = document.querySelector<HTMLElement>(".footer-wordmark")!
     const footer = document.querySelector<HTMLElement>(".site-footer")!
     const box = mark.getBoundingClientRect()
     const sticky = getComputedStyle(footer).position === "sticky"
-    const edge = sticky ? Math.min(innerHeight, box.bottom) : innerHeight
-    const revealStart = sticky ? footer.previousElementSibling!.getBoundingClientRect().bottom : box.top
-    window.scrollTo({ top: scrollY + revealStart - edge + box.height * fraction, behavior: "instant" })
-  }, percent)
+    const remainingReveal = sticky ? footer.previousElementSibling!.getBoundingClientRect().bottom - box.top : box.bottom - innerHeight
+    window.scrollTo({ top: scrollY + remainingReveal + distance, behavior: "instant" })
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+  }, offset)
 }
 
-test("footer fills at the same reveal depth across public pages", async ({ page }) => {
+test("footer wordmark fills after it is fully revealed across public pages", async ({ page }) => {
   for (const route of routes) {
     await page.goto(route)
     const wordmark = page.locator(".footer-wordmark")
     await expect(wordmark).toBeAttached()
     await page.evaluate(() => document.fonts.ready)
-    await expect.poll(() => wordmark.evaluate((node) => node.style.getPropertyValue("--footer-fill")), { message: route }).toBe("0.00%")
-    await wordmarkProgress(page, .5)
-    await expect.poll(async () => Math.abs(50 - await wordmark.evaluate((node) => parseFloat(node.style.getPropertyValue("--footer-fill")))), { message: route }).toBeLessThan(8)
+    const fill = () => wordmark.evaluate((node) => node.style.getPropertyValue("--footer-fill"))
+    await expect.poll(fill, { message: route }).toBe("0.00%")
+    await scrollPastWordmarkReveal(page, -30)
+    expect(await fill(), route).toBe("0.00%")
+    await scrollPastWordmarkReveal(page, 6)
+    expect(await fill(), route).toBe("0.00%")
+    await scrollPastWordmarkReveal(page, 44)
+    const duringFill = parseFloat(await fill())
+    expect(duringFill, route).toBeGreaterThan(20)
+    expect(duringFill, route).toBeLessThan(90)
     await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }))
     await expect.poll(() => wordmark.evaluate((node) => node.style.getPropertyValue("--footer-fill")), { message: route }).toBe("100.00%")
   }

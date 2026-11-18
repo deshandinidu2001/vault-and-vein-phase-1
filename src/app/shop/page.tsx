@@ -59,7 +59,7 @@ async function Catalogue({ searchParams }: { searchParams: Promise<Query> }) {
 }
 
 export default function ShopPage({ searchParams }: { searchParams: Promise<Query> }) {
-  return <div className="wrap page-top section space-y-10">
+  return <div className="wrap section shop-page space-y-10">
     <div className="space-y-5">
       <p className="eyebrow text-[#785520]">The catalogue</p>
       <h1>Shop the stones.</h1>

@@ -68,6 +68,7 @@
   .wrap { width: min(1280px,calc(100% - 2.5rem)); margin-inline: auto; }
   .section { padding-block: clamp(4rem,9vw,8rem); }
   .page-top { padding-top: clamp(8rem,16vw,12rem); }
+  .shop-page { padding-top: calc(var(--header-height) + clamp(1.25rem, 3vw, 3.25rem) + env(safe-area-inset-top)); }
   .eyebrow { font-size: .75rem; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; }
   .section-heading { display: grid; gap: 1rem; }
   .section-heading .eyebrow { color: #785520; }
