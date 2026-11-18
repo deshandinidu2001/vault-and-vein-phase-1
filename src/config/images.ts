@@ -25,7 +25,6 @@ export const editorialPhotos = {
   parcels: editorial("parcels", "Loose pink, wine and copper gems beside jeweller’s tweezers", "72% 52%"),
   cut: editorial("cut", "A golden faceted gemstone and a brass loupe on dark stone", "74% 49%"),
   bench: editorial("bench", "Rough and cut gemstones beside a loupe on a jeweller’s bench", "60% 50%"),
-  closing: editorial("closing", "A teal gemstone in an open evergreen velvet presentation box", "50% 57%"),
 }
 
 export const photos = {
@@ -42,7 +41,14 @@ export const photos = {
     mobileOrigin: "82% 52%",
     zoom: 1,
   },
-  closing: editorialPhotos.closing,
+  closing: {
+    src: "/images/editorial/make time for a stone.jpg",
+    srcMobile: "/images/editorial/make time for a stone.jpg",
+    alt: "",
+    origin: "56% 51%",
+    mobileOrigin: "73% 50%",
+    zoom: 1,
+  },
   aboutHeritage: { ...sapphirePhoto, origin: "63% 47%", zoom: 1.08 },
   aboutCraft: editorialPhotos.bench,
 } satisfies Record<string, PhotoSlot>

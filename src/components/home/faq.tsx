@@ -7,8 +7,8 @@ export function Faq() {
     <SectionHeading eyebrow="Before you buy">Questions, answered.</SectionHeading>
     <Accordion type="single" collapsible className="w-full" data-reveal>
       {faq.map(({ question, answer }, index) => <AccordionItem key={question} value={String(index)}>
-        <AccordionTrigger className="min-h-14 py-4 text-left text-base">{question}</AccordionTrigger>
-        <AccordionContent className="text-base text-muted-foreground">{answer}</AccordionContent>
+        <AccordionTrigger className="min-h-16 items-center gap-4 py-4 text-left font-display text-[clamp(1.35rem,2vw,1.85rem)] font-semibold leading-snug">{question}</AccordionTrigger>
+        <AccordionContent className="max-w-[60ch] pb-5 pr-6 font-sans text-lg leading-relaxed text-muted-foreground">{answer}</AccordionContent>
       </AccordionItem>)}
     </Accordion>
   </section>
