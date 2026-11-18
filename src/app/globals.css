@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "../components/home/hero.css";
 @import "../components/home/editorial.css";
+@import "../components/ui/stone-card.css";
 
 @theme inline {
   --font-sans: var(--type-sans);

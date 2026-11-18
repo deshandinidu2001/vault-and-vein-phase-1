@@ -1,0 +1,7 @@
+.stone-card { min-width: 0; border-radius: 1rem; overflow: hidden; border: 1px solid #0b3d2e26; background: #fffaf052; transition: translate .3s var(--easing), border-color .3s; }
+.dark-panel .stone-card { border-color: #f6f1e729; background: #f6f1e709; }
+.stone-card:hover, .stone-card:focus-within { translate: 0 -.25rem; border-color: #b58a39; }
+.stone-art { position: relative; isolation: isolate; aspect-ratio: 1.2; overflow: hidden; background: radial-gradient(ellipse at 50% 40%,#eee6d3,#e4dbc8); }
+.dark-panel .stone-art { background: radial-gradient(ellipse at 55% 45%,#245242,#0b2b22 75%); }
+.stone-art img { padding: 5%; transition: scale .4s var(--easing); }
+.stone-card:hover .stone-art img, .stone-card:focus-within .stone-art img { scale: 1.07; }
