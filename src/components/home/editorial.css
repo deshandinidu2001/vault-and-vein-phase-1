@@ -9,5 +9,91 @@
   .experience-visual { position: sticky; top: 6rem; }
   .experience-step { min-height: 35svh; align-content: center; }
 }
-@keyframes collection-reveal { from { clip-path: inset(0 9% 0 0 round 1.5rem); opacity: .45; } to { clip-path: inset(0 0 0 0 round 1.5rem); opacity: 1; } }
+@keyframes collection-reveal { from { clip-path: inset(0 9% 0 0); opacity: .45; } to { clip-path: inset(0); opacity: 1; } }
 @keyframes editorial-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.home-content .section { padding-block: clamp(3.5rem, 6.3vw, 7.5rem); }
+
+.editorial-card {
+  gap: 0;
+  overflow: clip;
+  border: 1px solid #0b3d2e20;
+  border-radius: clamp(1.2rem, 1.65vw, 1.65rem);
+  background-color: #eee6d8;
+}
+
+.editorial-card-engagement { background-color: #ece1ce; }
+.editorial-card-care { background-color: #eaeadd; }
+.editorial-card-closing { background-color: #06251c; border-color: #c9a24b55; }
+.editorial-copy { min-width: 0; padding: clamp(1.65rem, 4.2vw, 4.65rem); }
+.editorial-copy > p { max-width: 47ch; }
+.editorial-media { min-height: 15rem; width: 100%; aspect-ratio: 4/3; border-radius: 0; }
+.editorial-card-engagement .editorial-media { aspect-ratio: 5/4; }
+.collection-index {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  aspect-ratio: 1;
+  border: 1px solid #8b641c55;
+  border-radius: 50%;
+  color: #785520;
+  font-size: .8rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.gallery-intro { display: grid; align-items: end; gap: 1rem; }
+.gallery-intro > p { max-width: 34ch; }
+.gallery-rail {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: min(76vw, 21rem);
+  gap: 1rem;
+  margin-inline: calc(-1 * var(--content-edge));
+  padding: .3rem var(--content-edge) .75rem;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-padding-inline: var(--content-edge);
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: thin;
+  scrollbar-color: #c9a24b80 transparent;
+}
+
+.gallery-card { position: relative; min-width: 0; border-radius: 1rem; scroll-snap-align: start; }
+.gallery-card .stone-art {
+  aspect-ratio: 4/5;
+  border: 1px solid #f6f1e726;
+  border-radius: 1rem;
+  background: radial-gradient(ellipse at 50% 44%, #28604e 0%, #123a2e 49%, #08271e 100%);
+  transition: border-color .25s;
+}
+
+.gallery-card .stone-art img { padding: 8%; }
+.gallery-card:hover .stone-art, .gallery-card:focus-within .stone-art { border-color: #c9a24b; }
+.gallery-card:hover .stone-art img, .gallery-card:focus-within .stone-art img { scale: 1.06; }
+.gallery-open::after { position: absolute; inset: 0; border-radius: 1rem; content: ""; }
+.gallery-open:focus-visible::after { outline: 2px solid #dec082; outline-offset: 2px; }
+.gallery-rail-controls { display: flex; justify-content: center; gap: .65rem; }
+
+@media (min-width: 640px) {
+  .gallery-rail { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.25rem 1.25rem; margin-inline: 0; padding: 0; overflow: visible; scroll-snap-type: none; }
+  .gallery-rail-controls { display: none; }
+}
+
+@media (min-width: 768px) {
+  .editorial-card { align-items: stretch; }
+  .editorial-copy { align-content: center; }
+  .editorial-media { min-height: clamp(20rem, 31vw, 36rem); height: 100%; aspect-ratio: auto; }
+  .editorial-card-engagement .editorial-media { grid-column: span 5; min-height: clamp(24rem, 34vw, 41rem); aspect-ratio: auto; }
+  .editorial-card-engagement .editorial-copy { grid-column: span 7; }
+  .editorial-card-care .editorial-media, .editorial-card-closing .editorial-media { min-height: clamp(18rem, 28vw, 32rem); }
+  .editorial-card-closing { align-items: center; gap: clamp(1rem, 1.5vw, 1.5rem); padding: clamp(1rem, 3.15vw, 3.75rem); }
+  .editorial-card-closing .editorial-copy { padding: clamp(1rem, 1.5vw, 1.5rem); }
+  .editorial-card-closing .editorial-media { border-radius: .9rem; }
+}
+
+@media (min-width: 1024px) {
+  .gallery-intro { grid-template-columns: minmax(0, 1fr) auto; gap: 2rem; }
+  .gallery-rail { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2.75rem 1.35rem; }
+}

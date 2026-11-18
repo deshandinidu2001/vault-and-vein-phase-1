@@ -1,9 +1,13 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowUp } from "lucide-react"
+import { usePathname } from "next/navigation"
+import { useRef } from "react"
+import { ArrowUp, ArrowUpRight } from "lucide-react"
+import { gsap, useGSAP } from "@/components/animation/motion-provider"
 import { gemLinks, site } from "@/config/site"
 import { BrandBadge } from "./site-header"
+import { EnquireButton } from "./enquire-button"
 
 const groups = [
   { title: "Shop", links: gemLinks },
@@ -12,23 +16,68 @@ const groups = [
 ]
 
 export function SiteFooter() {
+  const footer = useRef<HTMLElement>(null)
+  const path = usePathname()
+
+  useGSAP(() => {
+    const element = footer.current
+    const surface = element?.previousElementSibling
+    if (!element || !surface) return
+    const media = gsap.matchMedia()
+
+    media.add("(prefers-reduced-motion: no-preference)", () => {
+      gsap.timeline({
+        scrollTrigger: {
+          trigger: surface,
+          start: "bottom bottom",
+          end: () => "+=" + Math.max(1, Math.min(window.innerHeight * .85, element.offsetHeight)),
+          scrub: .28,
+          invalidateOnRefresh: true,
+        },
+      }).fromTo(element, { "--footer-fill": "0%" }, { "--footer-fill": "100%", ease: "none", duration: 1 }, 0)
+        .from("[data-footer-rise]", { y: 22, opacity: .72, duration: .6, stagger: .12, ease: "power2.out" }, 0)
+    })
+    return () => media.revert()
+  }, { scope: footer, dependencies: [path], revertOnUpdate: true })
+
   return (
-    <footer className="dark-panel bg-deep">
-      <div className="wrap pb-8 pt-16 md:pt-24">
-        <div className="flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-4" aria-label="Vault & Vein home"><BrandBadge size={48} /><span>{site.tagline}</span></Link>
-          <button type="button" className="icon-button" aria-label="Back to top" onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" })}><ArrowUp size={20} aria-hidden="true" /></button>
+    <footer ref={footer} className="site-footer dark-panel" onFocusCapture={(event) => {
+      if (!event.target.matches(":focus-visible") || getComputedStyle(event.currentTarget).position !== "sticky") return
+      const surface = event.currentTarget.previousElementSibling
+      if (surface && event.target.getBoundingClientRect().top < surface.getBoundingClientRect().bottom) {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" })
+      }
+    }}>
+      <div className="wrap footer-inner">
+        <div className="footer-intro" data-footer-rise>
+          <div>
+            <Link href="/" className="footer-brand" aria-label="Vault & Vein home">
+              <BrandBadge size={48} /><span>{site.tagline}</span>
+            </Link>
+            <p className="mt-3 text-sm text-cream/80">Inspired by Sri Lankan gemstone heritage</p>
+          </div>
+          <EnquireButton className="footer-enquiry pill-gold">
+            Enquire about a stone
+            <span className="action-disc"><ArrowUpRight size={20} aria-hidden="true" /></span>
+          </EnquireButton>
         </div>
-        <div className="grid grid-cols-2 gap-8 py-12 sm:grid-cols-3">
+        <div className="footer-nav" data-footer-rise>
           {groups.map(({ title, links }) => <nav key={title} aria-label={title} className="grid content-start">
             <p className="eyebrow mb-2">{title}</p>
-            {links.map(({ href, label }) => <Link key={href} href={href} className="flex min-h-11 w-fit items-center text-sm hover:text-gold">{label}</Link>)}
+            <ul>
+              {links.map(({ href, label }) => <li key={href}><Link href={href} className="footer-link">{label}</Link></li>)}
+            </ul>
           </nav>)}
         </div>
-        <p className="footer-wordmark" translate="no">Vault &amp; Vein</p>
-        <div className="flex flex-wrap justify-between gap-3 border-t border-cream/20 pt-6 text-sm text-cream/80">
-          <p>Inspired by Sri Lankan gemstone heritage</p>
+        <div className="footer-wordmark">
+          <p translate="no">Vault &amp; Vein</p>
+          <p className="footer-wordmark-fill" translate="no" aria-hidden="true">Vault &amp; Vein</p>
+        </div>
+        <div className="footer-bottom">
           <p>© {new Date().getUTCFullYear()} Vault &amp; Vein</p>
+          <button type="button" className="footer-link gap-3" onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" })}>
+            Back to top <ArrowUp size={18} aria-hidden="true" />
+          </button>
         </div>
       </div>
     </footer>

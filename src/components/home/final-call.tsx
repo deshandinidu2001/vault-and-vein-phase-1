@@ -19,15 +19,15 @@ export function FinalCall() {
     return () => media.revert()
   }, { scope: section })
 
-  return <section ref={section} className="section marble dark-panel">
-    <div className="wrap film-grid">
-      <div className="grid justify-items-start gap-6">
+  return <section ref={section} className="wrap section">
+    <div className="editorial-card editorial-card-closing marble dark-panel film-grid">
+      <div className="editorial-copy grid justify-items-start gap-6">
         <p className="eyebrow" data-reveal>Make time for a stone</p>
         <h2 aria-label="Ready when you are."><span aria-hidden="true"><span data-cta-word>Ready</span>{" "}<span data-cta-word>when</span><br /><span data-cta-word>you</span>{" "}<span data-cta-word>are.</span></span></h2>
         <EnquireButton className="pill-gold" />
         <p className="text-sm text-cream/80">{site.replyTime}</p>
       </div>
-      <div className="photo aspect-[4/3]" data-image-reveal><ResponsivePhoto photo={photos.closing} sizes="(min-width: 768px) 50vw, 95vw" /></div>
+      <div className="photo editorial-media" data-image-reveal><ResponsivePhoto photo={photos.closing} sizes="(min-width: 768px) 50vw, 95vw" /></div>
     </div>
   </section>
 }

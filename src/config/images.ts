@@ -3,6 +3,7 @@ export type PhotoSlot = {
   srcMobile: string
   alt: string
   origin: string
+  mobileOrigin?: string
   zoom: number
 }
 

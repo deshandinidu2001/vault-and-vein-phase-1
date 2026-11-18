@@ -6,5 +6,15 @@ import { SiteHeader } from "./site-header"
 import { Toaster } from "sonner"
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
-  return <><CartHydration /><SiteHeader />{children}<SiteFooter /><CartSheet /><EnquirySheet /><Toaster theme="light" position="bottom-center" /></>
+  return <>
+    <CartHydration />
+    <SiteHeader />
+    <div className="site-frame">
+      <div className="site-page-surface">{children}</div>
+      <SiteFooter />
+    </div>
+    <CartSheet />
+    <EnquirySheet />
+    <Toaster theme="light" position="bottom-center" />
+  </>
 }

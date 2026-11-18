@@ -35,12 +35,12 @@ export function CollectionEdit() {
         <div className="flex touch-pan-y">
           {collection.map((edit, index) => (
             <article key={edit.title} aria-roledescription="slide" aria-label={(index + 1) + " of " + collection.length}
-              aria-hidden={current !== index} className="film-grid min-w-0 flex-[0_0_100%]">
-              <div className={"photo aspect-[4/3] " + (current === index ? "collection-image-active" : "")}>
+              aria-hidden={current !== index} className="film-grid editorial-card editorial-card-collection min-w-0 flex-[0_0_100%]">
+              <div className={"photo editorial-media " + (current === index ? "collection-image-active" : "")}>
                 <ResponsivePhoto photo={edit.photo} sizes="(min-width: 768px) 50vw, 95vw" />
               </div>
-              <div className={"grid gap-4 pb-3 md:p-5 " + (current === index ? "collection-text-active" : "opacity-0")}>
-                <p className="eyebrow text-[#785520]">0{index + 1}</p>
+              <div className={"editorial-copy grid gap-4 " + (current === index ? "collection-text-active" : "opacity-0")}>
+                <p className="collection-index">0{index + 1}</p>
                 <h3>{edit.title}</h3>
                 <p>{edit.description}</p>
                 <ul className="list-disc space-y-1 pl-5 marker:text-[#8a6627]">{edit.points.map((point) => <li key={point}>{point}</li>)}</ul>

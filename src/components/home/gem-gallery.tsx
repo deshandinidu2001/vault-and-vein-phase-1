@@ -18,6 +18,8 @@ type Filter = (typeof filters)[number][0]
 export function GemGallery({ stones }: { stones: Stone[] }) {
   const [filter, setFilter] = useState<Filter>("all")
   const [selected, setSelected] = useState<string | null>(null)
+  const [railEdges, setRailEdges] = useState({ start: true, end: false })
+  const rail = useRef<HTMLUListElement>(null)
   const openingButton = useRef<HTMLButtonElement>(null)
   const reduced = useReducedMotion()
   const currency = useUi((state) => state.currency)
@@ -31,28 +33,49 @@ export function GemGallery({ stones }: { stones: Stone[] }) {
     if (visible.length > 1) setSelected(visible[(selection + offset + visible.length) % visible.length].slug)
   }
 
+  function moveRail(direction: number) {
+    const track = rail.current
+    const firstCard = track?.firstElementChild
+    if (!track || !firstCard) return
+    const gap = parseFloat(window.getComputedStyle(track).columnGap) || 0
+    track.scrollBy({ left: direction * (firstCard.clientWidth + gap), behavior: reduced ? "instant" : "smooth" })
+  }
+
   return (
     <section id="gallery" className="section dark-panel">
       <div className="wrap space-y-8">
-        <SectionHeading eyebrow="The gem gallery">Find your next<br />signature stone.</SectionHeading>
+        <div className="gallery-intro">
+          <SectionHeading eyebrow="The gem gallery">Find your next<br />signature stone.</SectionHeading>
+          <p className="text-cream/80" data-reveal>Explore the cuts and colour families in our sample collection. Select a stone to see its details.</p>
+        </div>
         <ToggleGroup type="single" aria-label="Filter gallery by gem type" value={filter}
-          onValueChange={(value) => { if (value) setFilter(value as Filter) }} className="flex flex-wrap gap-2">
+          onValueChange={(value) => {
+            if (!value) return
+            setFilter(value as Filter)
+            rail.current?.scrollTo({ left: 0, behavior: "instant" })
+            setRailEdges({ start: true, end: false })
+          }} className="flex flex-wrap gap-2">
           {filters.map(([value, label]) => <ToggleGroupItem key={value} value={value} className="h-auto min-h-12 min-w-12 rounded-full! border border-cream/30 px-4 text-cream hover:bg-cream/15 hover:text-cream data-[state=on]:bg-gold data-[state=on]:text-deep">{label}</ToggleGroupItem>)}
         </ToggleGroup>
-        <ul className="grid grid-cols-1 gap-4 min-[460px]:grid-cols-2 lg:grid-cols-4" aria-label="Sample gems">
+        <ul ref={rail} className="gallery-rail" aria-label="Sample gems" onScroll={(event) => {
+          const track = event.currentTarget
+          const start = track.scrollLeft < 2
+          const end = track.scrollLeft + track.clientWidth >= track.scrollWidth - 2
+          setRailEdges((current) => current.start === start && current.end === end ? current : { start, end })
+        }}>
           <AnimatePresence initial={false}>
             {visible.map((item, index) => <motion.li key={item.id} layout={!reduced}
               initial={{ opacity: 0, y: reduced ? 0 : 12 }} animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }} transition={{ duration: reduced ? 0 : .3, delay: reduced ? 0 : Math.min(index, 5) * .06 }} className="stone-card">
+              exit={{ opacity: 0 }} transition={{ duration: reduced ? 0 : .3, delay: reduced ? 0 : Math.min(index, 5) * .06 }} className="gallery-card">
               <div className="stone-art">
-                <GemArt cut={item.cut} tint={item.tint} sizes="(min-width: 1024px) 25vw, (min-width: 460px) 50vw, 95vw"
+                <GemArt cut={item.cut} tint={item.tint} sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 76vw"
                   label={"Illustration of " + item.name} />
               </div>
-              <div className="grid gap-2 px-4 pb-4 pt-1 md:px-5">
+              <div className="grid content-start gap-2 pt-4">
                 <p className="eyebrow">{gemNames[item.gem_type]}</p>
                 <h3 className="text-[clamp(1.6rem,2.5vw,2.2rem)]">{item.name}</h3>
-                <p className="truncate text-sm text-cream/80" title={item.description}>{item.description}</p>
-                <button className="line-link w-fit text-sm" type="button" aria-haspopup="dialog" onClick={(event) => {
+                <p className="text-sm text-cream/80">{item.cut} <span aria-hidden="true">·</span> {item.carat} ct <span aria-hidden="true">·</span> {item.colour}</p>
+                <button className="line-link gallery-open w-fit text-sm" type="button" aria-label={"Open " + item.name} aria-haspopup="dialog" onClick={(event) => {
                   openingButton.current = event.currentTarget
                   setSelected(item.slug)
                 }}>Open this stone <ArrowUpRight size={17} aria-hidden="true" /></button>
@@ -60,6 +83,14 @@ export function GemGallery({ stones }: { stones: Stone[] }) {
             </motion.li>)}
           </AnimatePresence>
         </ul>
+        {visible.length > 1 && <div className="gallery-rail-controls">
+          <button className="icon-button" type="button" aria-label="Scroll to previous gallery card" onClick={() => moveRail(-1)} disabled={railEdges.start}>
+            <ArrowLeft size={20} aria-hidden="true" />
+          </button>
+          <button className="icon-button" type="button" aria-label="Scroll to next gallery card" onClick={() => moveRail(1)} disabled={railEdges.end}>
+            <ArrowRight size={20} aria-hidden="true" />
+          </button>
+        </div>}
         {!visible.length && <p role="status">There are no sample stones in this selection.</p>}
         <p className="text-sm text-cream/80">Sample stones shown until live stock is added.</p>
       </div>

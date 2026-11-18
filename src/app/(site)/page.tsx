@@ -19,7 +19,7 @@ export default async function Home() {
   return (
     <>
       <HeroSlider />
-      <Reveal>
+      <Reveal className="home-content">
         <CollectionEdit />
         <Experience />
         <EngagementEdit />
