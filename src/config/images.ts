@@ -32,7 +32,14 @@ export const photos = {
   collectionEngagement: editorialPhotos.engagement,
   collectionRare: { ...editorialPhotos.rarities, origin: "88% 50%", mobileOrigin: "91% 50%" },
   collectionParcels: { ...editorialPhotos.parcels, origin: "100% 52%", mobileOrigin: "94% 52%" },
-  engagement: editorialPhotos.engagement,
+  engagement: {
+    src: "/images/editorial/The engagement edit.jpg",
+    srcMobile: "/images/editorial/The engagement edit.jpg",
+    alt: "A peach faceted gemstone beside a gold ring in warm light",
+    origin: "51% 57%",
+    mobileOrigin: "52% 57%",
+    zoom: 1.09,
+  },
   care: {
     src: "/images/editorial/after the sale.jpg",
     srcMobile: "/images/editorial/after the sale.jpg",

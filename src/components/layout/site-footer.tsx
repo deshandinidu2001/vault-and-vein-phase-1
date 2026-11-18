@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useRef } from "react"
 import { ArrowUp, ArrowUpRight } from "lucide-react"
-import { gsap, useGSAP } from "@/components/animation/motion-provider"
+import { gsap, ScrollTrigger, useGSAP } from "@/components/animation/motion-provider"
 import { gemLinks, site } from "@/config/site"
 import { BrandBadge } from "./site-header"
 import { EnquireButton } from "./enquire-button"
@@ -17,16 +17,53 @@ const groups = [
 
 export function SiteFooter() {
   const footer = useRef<HTMLElement>(null)
+  const wordmark = useRef<HTMLDivElement>(null)
   const path = usePathname()
 
   useGSAP(() => {
     const element = footer.current
     const surface = element?.previousElementSibling
-    if (!element || !surface) return
+    const mark = wordmark.current
+    if (!element || !surface || !mark) return
     const media = gsap.matchMedia()
 
     media.add("(prefers-reduced-motion: no-preference)", () => {
-      gsap.timeline({
+      const updateFill = () => {
+        const box = mark.getBoundingClientRect()
+        const viewportHeight = window.innerHeight
+        const entry = Math.min(42, box.height * .14)
+        let progress: number
+
+        if (getComputedStyle(element).position === "sticky") {
+          // The page surface covers the wordmark until it scrolls out of the way.
+          const edge = surface.getBoundingClientRect().bottom
+          const start = Math.min(viewportHeight, box.bottom) - entry
+          const end = Math.max(0, box.top - Math.min(144, box.height * .45))
+          progress = (start - edge) / Math.max(1, start - end)
+        } else {
+          // In normal flow the mark enters from the bottom of the viewport.
+          const tail = element.getBoundingClientRect().bottom - box.bottom
+          const distance = box.height + Math.min(88, Math.max(0, tail)) - entry
+          progress = (viewportHeight - box.top - entry) / Math.max(1, distance)
+        }
+
+        mark.style.setProperty("--footer-fill", (gsap.utils.clamp(0, 1, progress) * 100).toFixed(2) + "%")
+      }
+
+      ScrollTrigger.create({
+        trigger: surface,
+        start: "bottom bottom",
+        end: "max",
+        onUpdate: updateFill,
+        onRefresh: updateFill,
+      })
+      updateFill()
+
+      gsap.from("[data-footer-rise]", {
+        y: 22,
+        opacity: .72,
+        stagger: .12,
+        ease: "power2.out",
         scrollTrigger: {
           trigger: surface,
           start: "bottom bottom",
@@ -34,8 +71,8 @@ export function SiteFooter() {
           scrub: .28,
           invalidateOnRefresh: true,
         },
-      }).fromTo(element, { "--footer-fill": "0%" }, { "--footer-fill": "100%", ease: "none", duration: 1 }, 0)
-        .from("[data-footer-rise]", { y: 22, opacity: .72, duration: .6, stagger: .12, ease: "power2.out" }, 0)
+      })
+      return () => { mark.style.removeProperty("--footer-fill") }
     })
     return () => media.revert()
   }, { scope: footer, dependencies: [path], revertOnUpdate: true })
@@ -69,7 +106,7 @@ export function SiteFooter() {
             </ul>
           </nav>)}
         </div>
-        <div className="footer-wordmark">
+        <div ref={wordmark} className="footer-wordmark">
           <p translate="no">Vault &amp; Vein</p>
           <p className="footer-wordmark-fill" translate="no" aria-hidden="true">Vault &amp; Vein</p>
         </div>

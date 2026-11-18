@@ -43,9 +43,8 @@
 .collection-meter span { display: block; height: 100%; background: #a97920; transform: scaleX(0); transform-origin: left; }
 
 .craft-section { display: grid; gap: clamp(1.75rem, 5vw, 5rem); align-items: center; }
-.craft-figure { order: 1; min-width: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: .65rem; }
+.craft-figure { order: 1; min-width: 0; display: grid; }
 .craft-photo { min-height: clamp(15rem, 64vw, 34rem); border-radius: clamp(.95rem, 1.6vw, 1.5rem); }
-.craft-figure figcaption { font-size: .75rem; color: #515c52; }
 .craft-copy { display: grid; gap: clamp(.75rem, 1.5vw, 1.3rem); justify-items: start; }
 .craft-copy .eyebrow { color: #785520; }
 .craft-copy h2 { max-width: 14ch; }

@@ -16,7 +16,6 @@ export function Experience() {
         <div className="photo craft-photo" data-image-reveal>
           <ResponsivePhoto photo={editorialPhotos.bench} sizes="(min-width: 1024px) 48vw, 94vw" />
         </div>
-        <figcaption>Illustrative jeweller’s bench</figcaption>
       </figure>
       <div className="craft-copy">
         <p className="eyebrow">The Vault &amp; Vein way</p>
