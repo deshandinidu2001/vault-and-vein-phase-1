@@ -13,7 +13,7 @@ export function CheckoutReceipt({ confirmedIds, refresh }: { confirmedIds: strin
       const { items, remove } = useCart.getState()
       items.filter(({ id }) => confirmedIds.includes(id)).forEach(({ id }) => remove(id))
     }
-    if (useCart.persist.hasHydrated()) clearPurchased()
+    if (!useCart.persist || useCart.persist.hasHydrated()) clearPurchased()
     else return useCart.persist.onFinishHydration(clearPurchased)
   }, [confirmedIds])
 

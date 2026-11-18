@@ -98,7 +98,7 @@ export function EnquirySheet() {
   const { overlay, enquiry, closeOverlay } = useUi()
   const mobile = useSyncExternalStore(subscribe, () => window.matchMedia(mobileQuery).matches, () => false)
   return <Sheet open={overlay === "enquiry"} onOpenChange={(open) => { if (!open && useUi.getState().overlay === "enquiry") closeOverlay() }}>
-    <SheetContent side={mobile ? "bottom" : "right"} data-lenis-prevent onOpenAutoFocus={(event) => {
+    <SheetContent side={mobile ? "bottom" : "right"} aria-labelledby="enquiry-title" data-lenis-prevent onOpenAutoFocus={(event) => {
         if (mobile) {
           event.preventDefault()
           document.getElementById("enquiry-title")?.focus()

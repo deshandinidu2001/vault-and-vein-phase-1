@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useRef } from "react"
 import { ArrowUp, ArrowUpRight } from "lucide-react"
-import { gsap, ScrollTrigger, useGSAP } from "@/components/animation/motion-provider"
+import { gsap, useGSAP } from "@/components/animation/motion-provider"
 import { gemLinks, site } from "@/config/site"
 import { BrandBadge } from "./site-header"
 import { EnquireButton } from "./enquire-button"
@@ -30,28 +30,27 @@ export function SiteFooter() {
     media.add("(prefers-reduced-motion: no-preference)", () => {
       const updateFill = () => {
         const box = mark.getBoundingClientRect()
-        const viewportHeight = window.innerHeight
-        const entry = Math.min(42, box.height * .14)
-        const overscroll = Math.min(88, box.height * .36)
-        const reveal = getComputedStyle(element).position === "sticky"
-          ? Math.min(viewportHeight, box.bottom) - surface.getBoundingClientRect().bottom
-          : viewportHeight - box.top
-        const remaining = getComputedStyle(element).position === "sticky"
-          ? element.offsetHeight - (element.getBoundingClientRect().bottom - box.bottom)
-          : box.height + element.getBoundingClientRect().bottom - box.bottom
-        const distance = Math.min(box.height + overscroll, remaining) - entry
-        const progress = (reveal - entry) / Math.max(1, distance)
+        const sticky = getComputedStyle(element).position === "sticky"
+        const top = Math.max(0, box.top, sticky ? surface.getBoundingClientRect().bottom : 0)
+        const bottom = Math.min(window.innerHeight, box.bottom)
+        const atEnd = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2
+        const progress = atEnd ? 1 : (bottom - top) / Math.max(1, box.height)
         mark.style.setProperty("--footer-fill", (gsap.utils.clamp(0, 1, progress) * 100).toFixed(2) + "%")
       }
 
-      ScrollTrigger.create({
-        trigger: surface,
-        start: "bottom bottom",
-        end: "max",
-        onUpdate: updateFill,
-        onRefresh: updateFill,
-        onLeave: updateFill,
-      })
+      let frame = 0
+      const scheduleFill = () => {
+        if (frame) return
+        frame = requestAnimationFrame(() => {
+          frame = 0
+          updateFill()
+        })
+      }
+      const resize = new ResizeObserver(scheduleFill)
+      resize.observe(surface)
+      resize.observe(mark)
+      window.addEventListener("scroll", scheduleFill, { passive: true })
+      window.addEventListener("resize", scheduleFill)
       updateFill()
 
       gsap.from("[data-footer-rise]", {
@@ -67,7 +66,13 @@ export function SiteFooter() {
           invalidateOnRefresh: true,
         },
       })
-      return () => { mark.style.removeProperty("--footer-fill") }
+      return () => {
+        resize.disconnect()
+        window.removeEventListener("scroll", scheduleFill)
+        window.removeEventListener("resize", scheduleFill)
+        cancelAnimationFrame(frame)
+        mark.style.removeProperty("--footer-fill")
+      }
     })
     return () => media.revert()
   }, { scope: footer, dependencies: [path], revertOnUpdate: true })
@@ -83,7 +88,7 @@ export function SiteFooter() {
       <div className="wrap footer-inner">
         <div className="footer-intro" data-footer-rise>
           <div>
-            <Link href="/" className="footer-brand" aria-label="Vault & Vein home">
+            <Link href="/" className="footer-brand" aria-label={site.tagline + " Vault & Vein home"}>
               <BrandBadge size={48} /><span>{site.tagline}</span>
             </Link>
             <p className="mt-3 text-sm text-cream/80">Inspired by Sri Lankan gemstone heritage</p>

@@ -8,14 +8,14 @@ export async function POST(request: Request) {
   if (request.headers.get("origin") !== config.origin) return Response.json({ message: "Invalid checkout origin." }, { status: 403 })
   const input = checkoutInput.safeParse(await readJson(request))
   if (!input.success) return Response.json({ message: "Check your cart and delivery details." }, { status: 400 })
-  const { ids, ...customer } = input.data
+  const { ids, requestId, ...customer } = input.data
 
   try {
     if (!await permitRequest(request, "checkout", customer.email)) {
       return Response.json({ message: "Too many checkout attempts. Try again in a few minutes." }, { status: 429 })
     }
     const { data, error } = await serviceDatabase().rpc("reserve_checkout", {
-      p_ids: ids, p_customer: customer, p_shipping: config.shipping,
+      p_ids: ids, p_customer: customer, p_shipping: config.shipping, p_token: requestId,
     })
     if (error?.code === "P0001") {
       return Response.json({ message: "One or more stones are unavailable. Check your cart and try again." }, { status: 409 })

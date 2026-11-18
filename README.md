@@ -1,39 +1,52 @@
 # Vault & Vein
 
-Vault & Vein is a storefront for fine cut and polished gemstones, inspired by Sri Lanka’s gemstone heritage. Phase 1 is a frontend preview with a 12-stone sample catalogue, a shortlist cart, and enquiry and contact forms.
+Vault & Vein is a storefront for cut and polished gemstones. It includes a catalogue, a shortlist cart, enquiry forms, hosted PayHere checkout, and a store admin panel.
 
-## Run locally
+## Run the preview
 
-Use Node.js 22 LTS or newer and npm. From the project directory, install the locked dependencies and start the preview.
+Use Node.js 22.18 or newer and npm.
 
 ```sh
 npm ci
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000. Without Supabase, the store uses the 12 sample listings. Forms validate and display a preview confirmation. Online payment and admin sign-in are disabled in preview mode.
 
-## Replace the preview images
+## Connect the backend
 
-- Edit `src/config/hero.ts` for the five hero slides.
-- Edit `src/config/images.ts` for collection, engagement, care, closing and About photos.
-- Each slot has a desktop path, mobile path, alt text, zoom and crop origin. Store replacements under `public/images/` and use paths starting at `/images/`.
-- The supplied sapphire opens the hero. The generated [editorial images](docs/editorial-images.md) illustrate collection themes and the craft behind a stone. Use separate photography for individual listings.
-- Sample stone illustrations and models use the cut and tint from `src/data/stones.ts`. The original brand JPEGs are in `public/brand/`.
+1. Create or select a Supabase project. Apply the two SQL files in `supabase/migrations/` in filename order on that project.
+2. Copy `.env.example` to `.env.local`. Set the Supabase project URL, publishable or anon key, and service-role key. Set the service-role key on the server only. The database starts with an empty catalogue.
+3. In Supabase Auth, create a user with a confirmed email and a password. Disable public sign-ups if the project is dedicated to this store. Use the Auth user ID to grant access:
 
-## Edit store settings
+   ```sql
+   insert into public.admin_users (user_id) values ('ACCOUNT_UUID');
+   ```
 
-Edit `src/config/site.ts` for public email, international WhatsApp number, business hours, map, reply time, the illustrative LKR to USD rate, shipping and return notes, FAQ and policy copy. Contact details and the return window are intentionally blank until supplied. Set `NEXT_PUBLIC_SITE_URL` to the eventual public URL for canonical links and the sitemap.
+4. Sign in at `/admin/login`. Create and publish listings from Inventory. Use the Sample listing setting for demonstration stones. The admin Inbox holds submitted contact messages and enquiries. The Orders tab shows payment and shipment status.
 
-Sample prices, origins, treatments, availability and report flags are illustrative. The forms show a local confirmation and reset without sending a message. The cart stores its shortlist in the browser.
+## Enable PayHere checkout
 
-## Phase 2
+1. Deploy the application to an HTTPS domain that PayHere can reach and set the root URL as `NEXT_PUBLIC_SITE_URL`.
+2. Configure a PayHere sandbox merchant for that domain. Set `PAYHERE_MODE=sandbox`, `PAYHERE_MERCHANT_ID`, `PAYHERE_MERCHANT_SECRET`, and `SHIPPING_LKR`. The shipping value is a whole LKR amount, including `0` for free delivery. Checkout supports LKR payments and delivery within Sri Lanka.
+3. Publish a test listing for the sandbox check. Verify checkout using PayHere’s test payment details. Check that PayHere reaches `/api/payhere/notify`, the order status page confirms the payment, and the stone is listed as sold. Check unsuccessful payment and cancellation, too.
+4. Set shop contact details and delivery and return terms in `src/config/site.ts` before selling. Use `PAYHERE_MODE=live` and the approved live merchant credentials when the sandbox checks are complete.
 
-Phase 2 adds Supabase storage, database and row security, checkout and stone reservations, PayHere payments and webhooks, Resend emails, rate-limited enquiry and contact APIs, and an admin panel. Keep data access behind `src/lib/data.ts` when introducing live inventory. `.env.example` lists the planned variable names with empty values.
+Checkout holds each unique stone for 20 minutes. The database sets and confirms the checkout total. The order status page updates after a verified PayHere notification. Late payments and chargebacks appear as **Review** in the Orders tab. Reconcile those cases in PayHere before arranging dispatch. Mark an order as shipped only after dispatch.
 
-## Checks to run later
+## Images and store details
 
-- Lint with `npm run lint`.
-- Check TypeScript with `npm run typecheck`.
-- Check the production build with `npm run build`.
-- Review the mobile layout and keyboard flow, including both carousels, gallery, filters, cart, forms, reduced motion and the static gem viewer fallback.
+- Update the five home slides in `src/config/hero.ts` and the editorial slots in `src/config/images.ts`. The images and gem viewers illustrate colour and cut.
+- Set the store's email, hours, map, currency estimate, policies, and site copy in `src/config/site.ts`. Set the WhatsApp number with `NEXT_PUBLIC_WHATSAPP_NUMBER`.
+- Contact and enquiry messages are visible in the admin inbox.
+
+## Verify
+
+```sh
+npm run lint
+npm run typecheck
+node ./node_modules/@playwright/test/cli.js install chromium --only-shell
+npm test
+```
+
+On Windows, set `NODE_USE_SYSTEM_CA=1` in the current shell if Node cannot verify the TLS certificates for browser or font downloads. Playwright checks the sample storefront on desktop and mobile Chromium. A separate local fixture exercises admin and checkout through the application using the same migrations, simulated Supabase API responses, and an intercepted PayHere form submission. The database suite checks access boundaries, reservations and payment transitions. Run the hosted PayHere sandbox check with your merchant and Supabase project.

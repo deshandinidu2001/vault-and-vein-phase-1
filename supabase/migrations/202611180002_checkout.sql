@@ -1,6 +1,6 @@
 create table public.orders (
   id uuid primary key default gen_random_uuid(),
-  public_token uuid not null default gen_random_uuid(),
+  public_token uuid unique not null,
   customer jsonb not null,
   status text not null default 'pending' check (status in ('pending','paid','failed','cancelled','expired','review','shipped')),
   total_lkr integer not null check (total_lkr > 0),
@@ -54,18 +54,28 @@ begin
 end;
 $$;
 
-create function public.reserve_checkout(p_ids uuid[], p_customer jsonb, p_shipping integer)
-returns public.orders language plpgsql set search_path = '' as $$
+create function public.reserve_checkout(p_ids uuid[], p_customer jsonb, p_shipping integer, p_token uuid)
+returns jsonb language plpgsql set search_path = '' as $$
 declare
   item_count integer;
   total integer;
   placed public.orders;
 begin
-  if coalesce(cardinality(p_ids), 0) not between 1 and 12 or p_shipping is null or p_shipping not between 0 and 1000000 then
+  if coalesce(cardinality(p_ids), 0) not between 1 and 12 or p_shipping is null or p_shipping not between 0 and 1000000 or p_token is null then
     raise exception 'Invalid checkout' using errcode = '22023';
   end if;
 
   perform public.expire_checkouts();
+
+  select * into placed from public.orders where public_token = p_token;
+  if found then
+    if placed.status = 'pending' and placed.customer = p_customer and placed.shipping_lkr = p_shipping and
+      (select array_agg(product_id order by product_id) from public.order_items where order_id = placed.id) =
+      (select array_agg(product_id order by product_id) from unnest(p_ids) as selected(product_id)) then
+      return jsonb_build_object('id', placed.id, 'public_token', placed.public_token, 'total_lkr', placed.total_lkr);
+    end if;
+    raise exception 'Checkout attempt already used' using errcode = 'P0001';
+  end if;
 
   -- Coordinate with catalogue edits by locking the rows before reading prices and state.
   perform 1 from public.products where id = any(p_ids) order by id for update;
@@ -76,14 +86,14 @@ begin
     raise exception 'One or more stones are unavailable' using errcode = 'P0001';
   end if;
 
-  insert into public.orders (customer, total_lkr, shipping_lkr)
-    values (p_customer, total + p_shipping, p_shipping) returning * into placed;
+  insert into public.orders (public_token, customer, total_lkr, shipping_lkr)
+    values (p_token, p_customer, total + p_shipping, p_shipping) returning * into placed;
   insert into public.order_items (order_id, product_id, name, price_lkr)
     select placed.id, id, name, price_lkr from public.products where id = any(p_ids);
   insert into public.stock_holds (order_id, product_id)
     select placed.id, id from public.products where id = any(p_ids);
   update public.products set status = 'reserved', reserved_until = placed.expires_at where id = any(p_ids);
-  return placed;
+  return jsonb_build_object('id', placed.id, 'public_token', placed.public_token, 'total_lkr', placed.total_lkr);
 end;
 $$;
 
@@ -132,7 +142,7 @@ begin
 end;
 $$;
 
-revoke execute on function public.expire_checkouts(), public.reserve_checkout(uuid[],jsonb,integer),
+revoke execute on function public.expire_checkouts(), public.reserve_checkout(uuid[],jsonb,integer,uuid),
   public.apply_payment(uuid,numeric,text,text) from public, anon, authenticated;
-grant execute on function public.expire_checkouts(), public.reserve_checkout(uuid[],jsonb,integer),
+grant execute on function public.expire_checkouts(), public.reserve_checkout(uuid[],jsonb,integer,uuid),
   public.apply_payment(uuid,numeric,text,text) to service_role;

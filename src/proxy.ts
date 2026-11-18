@@ -8,6 +8,7 @@ export async function proxy(request: NextRequest) {
   if (!url || !key) return response
 
   const supabase = createServerClient(url, key, {
+    cookieOptions: { httpOnly: true },
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (changes) => {

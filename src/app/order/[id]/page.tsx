@@ -2,7 +2,8 @@ import Link from "next/link"
 import { connection } from "next/server"
 import { notFound } from "next/navigation"
 import { z } from "zod"
-import { backendConfigured, serviceDatabase } from "@/lib/backend"
+import { backendConfigured } from "@/lib/backend"
+import { getOrderStatus } from "@/lib/checkout"
 import { CheckoutReceipt } from "@/components/shop/checkout-receipt"
 import { formatPrice } from "@/lib/pricing"
 
@@ -28,11 +29,9 @@ export default async function OrderPage(props: PageProps<"/order/[id]">) {
   const { key } = await props.searchParams
   if (!backendConfigured || !z.uuid().safeParse(id).success || typeof key !== "string" || !z.uuid().safeParse(key).success) notFound()
 
-  const { data: order, error } = await serviceDatabase().from("orders")
-    .select("status,total_lkr,expires_at,order_items(product_id)").eq("id", id).eq("public_token", key).maybeSingle()
-  if (error) throw new Error("Could not load order status")
+  const order = await getOrderStatus(id, key)
   if (!order) notFound()
-  const status = order.status === "pending" && Date.parse(order.expires_at) <= Date.now() ? "expired" : order.status
+  const { status } = order
   const paid = status === "paid" || status === "shipped"
 
   return <div className="wrap section page-top">

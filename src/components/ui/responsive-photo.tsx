@@ -28,8 +28,7 @@ export function ResponsivePhoto({
     <picture>
       <source media="(max-width: 639px)" srcSet={mobile.srcSet} sizes={sizes} />
       {/* getImageProps provides Next's optimized sources to the art-directed picture. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img {...desktop} className={photo.mobileOrigin ? "photo-with-mobile-crop" : undefined} />
+      <img {...desktop} alt={photo.alt} className={photo.mobileOrigin ? "photo-with-mobile-crop" : undefined} />
     </picture>
   )
 }

@@ -68,7 +68,7 @@ export function ShopFilters({ current, options }: FiltersProps) {
         })}
         <label className="flex min-h-12 items-center gap-2 self-end text-sm font-semibold">
           <input type="checkbox" name="certified" value="1" defaultChecked={current.certified} className="size-5 accent-emerald" />
-          Certified sample stones
+          Lab report available
         </label>
         <fieldset className="min-w-0">
           <legend className="text-sm font-semibold">Carat range (ct)</legend>

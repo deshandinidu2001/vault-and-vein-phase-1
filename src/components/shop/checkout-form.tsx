@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState, type FormEvent } from "react"
+import { useRef, useState, type FormEvent } from "react"
 import { useCart } from "@/store/cart"
 import { formatPrice } from "@/lib/pricing"
 
@@ -24,22 +24,27 @@ export function CheckoutForm({ shipping, sandbox }: { shipping: number; sandbox:
   const [prepared, setPrepared] = useState<Prepared>()
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
+  const attempt = useRef<{ details: string; id: string }>(null)
   const estimate = items.reduce((sum, item) => sum + item.price_lkr, shipping)
 
   async function reserve(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (busy) return
     const customer = Object.fromEntries(new FormData(event.currentTarget))
+    const order = { ...customer, ids: items.map((item) => item.id).sort() }
+    const details = JSON.stringify(order)
+    if (attempt.current?.details !== details) attempt.current = { details, id: crypto.randomUUID() }
     setError("")
     setBusy(true)
     try {
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...customer, ids: items.map((item) => item.id) }),
+        body: JSON.stringify({ ...order, requestId: attempt.current.id }),
       })
       const result = await response.json()
       if (!response.ok) {
+        if (response.status === 409) attempt.current = null
         setError(result.message)
         return
       }

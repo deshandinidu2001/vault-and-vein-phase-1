@@ -1,9 +1,10 @@
 import "server-only"
 import { z } from "zod"
-import { backendConfigured } from "./backend"
+import { backendConfigured, serviceDatabase } from "./backend"
 import { asPayHereAmount, checkoutHash, payhereEndpoints } from "./payhere"
 
 export const checkoutInput = z.object({
+  requestId: z.uuid(),
   ids: z.array(z.uuid()).min(1).max(12).refine((ids) => new Set(ids).size === ids.length),
   first_name: z.string().trim().min(1).max(80),
   last_name: z.string().trim().min(1).max(80),
@@ -27,7 +28,7 @@ export function checkoutConfig() {
 }
 
 type Config = NonNullable<ReturnType<typeof checkoutConfig>>
-type Customer = Omit<z.infer<typeof checkoutInput>, "ids">
+type Customer = Omit<z.infer<typeof checkoutInput>, "ids" | "requestId">
 type Order = { id: string; public_token: string; total_lkr: number }
 
 export function paymentForm(config: Config, customer: Customer, order: Order) {
@@ -50,4 +51,13 @@ export function paymentForm(config: Config, customer: Customer, order: Order) {
       hash: checkoutHash(config.merchant, config.secret, order.id, amount),
     },
   }
+}
+
+export async function getOrderStatus(id: string, token: string) {
+  const { data, error } = await serviceDatabase().from("orders")
+    .select("status,total_lkr,expires_at,order_items(product_id)").eq("id", id).eq("public_token", token).maybeSingle()
+  if (error) throw new Error("Could not load order status")
+  if (!data) return null
+  const status = data.status === "pending" && Date.parse(data.expires_at) <= Date.now() ? "expired" : data.status
+  return { ...data, status }
 }

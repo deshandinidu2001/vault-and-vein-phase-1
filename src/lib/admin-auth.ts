@@ -7,6 +7,7 @@ import { backendConfigured, serviceDatabase } from "./backend"
 export async function adminSession() {
   const store = await cookies()
   return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    cookieOptions: { httpOnly: true },
     cookies: {
       getAll: () => store.getAll(),
       setAll: (changes) => {

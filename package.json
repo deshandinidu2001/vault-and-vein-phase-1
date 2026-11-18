@@ -7,6 +7,10 @@
     "build": "node ./node_modules/next/dist/bin/next build",
     "start": "node ./node_modules/next/dist/bin/next start",
     "lint": "node ./node_modules/eslint/bin/eslint.js .",
+    "test": "npm run test:backend && npm run test:browser && npm run test:configured",
+    "test:backend": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/backend.test.mjs",
+    "test:browser": "node ./node_modules/@playwright/test/cli.js test",
+    "test:configured": "node ./node_modules/@playwright/test/cli.js test --config playwright.backend.config.ts",
     "typecheck": "node ./node_modules/next/dist/bin/next typegen && node ./node_modules/typescript/bin/tsc --noEmit"
   },
   "dependencies": {

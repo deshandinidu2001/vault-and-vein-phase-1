@@ -77,7 +77,7 @@ export function GemGallery({ stones }: { stones: Stone[] }) {
                 <p className="eyebrow">{gemNames[item.gem_type]}</p>
                 <h3 className="text-[clamp(1.6rem,2.5vw,2.2rem)]">{item.name}</h3>
                 <p className="text-sm text-cream/80">{item.cut} <span aria-hidden="true">·</span> {item.carat} ct <span aria-hidden="true">·</span> {item.colour}</p>
-                <button className="line-link gallery-open w-fit text-sm" type="button" aria-label={"Open " + item.name} aria-haspopup="dialog" onClick={(event) => {
+                <button className="line-link gallery-open w-fit text-sm" type="button" aria-label={"Open this stone: " + item.name} aria-haspopup="dialog" onClick={(event) => {
                   openingButton.current = event.currentTarget
                   setSelected(item.slug)
                 }}>Open this stone <ArrowUpRight size={17} aria-hidden="true" /></button>

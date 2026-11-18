@@ -25,12 +25,13 @@ export function GemViewer({ cut, tint, label, stage = 2, interactive = false }: 
     if (!desktop) return
     const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } }
     if ((nav.deviceMemory ?? 8) <= 4 || (nav.hardwareConcurrency || 8) <= 4 || nav.connection?.saveData) return
-    const canvas = document.createElement("canvas")
-    const context = canvas.getContext("webgl2", { failIfMajorPerformanceCaveat: true })
-    if (context) {
-      context.getExtension("WEBGL_lose_context")?.loseContext()
-      setCapable(true)
-    }
+    const frame = requestAnimationFrame(() => {
+      const canvas = document.createElement("canvas")
+      const context = canvas.getContext("webgl2", { failIfMajorPerformanceCaveat: true })
+      context?.getExtension("WEBGL_lose_context")?.loseContext()
+      setCapable(Boolean(context))
+    })
+    return () => cancelAnimationFrame(frame)
   }, [desktop])
 
   const fallback = <div className="absolute inset-4"><GemArt cut={cut} tint={tint} stage={stage} label={label} sizes="(min-width: 768px) 45vw, 90vw" /></div>
