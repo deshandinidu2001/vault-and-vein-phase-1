@@ -137,11 +137,15 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .site-footer[data-reveal-sticky] { position: sticky; bottom: 0; }
-  .footer-wordmark[data-fill-active] .footer-wordmark-fill { transition: clip-path 1.15s var(--easing); }
+  .footer-wordmark[data-fill-active] .footer-wordmark-fill { transition: clip-path 1.2s ease-in-out; }
 }
 
-@media (min-width: 640px) {
+@media (min-width: 360px) {
   .footer-nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (360px <= width < 640px) {
+  .footer-nav { gap: .65rem; }
 }
 
 @media (min-width: 1024px) {

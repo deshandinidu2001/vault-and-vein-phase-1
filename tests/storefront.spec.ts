@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type Page } from "@playwright/test"
 
 const product = "/shop/monsoon-blue"
-const routes = ["/", "/shop", "/about", "/contact", "/shipping", "/returns", "/privacy", "/terms", product, "/checkout", "/admin/login"]
+const routes = ["/", "/shop", "/about", "/contact", "/shipping", "/returns", "/privacy", "/terms", product, "/checkout"]
 
 test.beforeEach(async ({ page }) => {
   await page.route("https://maps.google.com/**", (route) => route.abort())
@@ -14,6 +14,14 @@ test("hero slide controls, gallery filtering and a keyboard-operable FAQ", async
   await expect(dots.getByRole("button")).toHaveCount(5)
   const first = dots.getByRole("button", { name: /Show image 1 of 5/ })
   await expect(first).toHaveAttribute("aria-pressed", "false", { timeout: 7000 })
+  if (!isMobile) {
+    await page.locator(".hero-art").hover({ position: { x: 950, y: 160 } })
+    const selection = await dots.locator("[aria-pressed=true]").getAttribute("aria-label")
+    await page.waitForTimeout(1650)
+    await expect(dots.locator("[aria-pressed=true]")).toHaveAttribute("aria-label", selection!)
+    await page.mouse.move(2, 2)
+    await expect(dots.locator("[aria-pressed=true]")).not.toHaveAttribute("aria-label", selection!)
+  }
   const third = dots.getByRole("button", { name: /Show image 3 of 5/ })
   await third.click()
   await expect(third).toHaveAttribute("aria-pressed", "true")
@@ -144,6 +152,9 @@ test("cart persistence, currency switch, enquiry and removal", async ({ page }) 
 
 test("contact validation and submission, admin guard and safe preview checkout", async ({ page, request }) => {
   await page.goto("/contact")
+  const intro = await page.getByRole("main").getByText("Contact", { exact: true }).boundingBox()
+  const header = await page.locator(".header-row").boundingBox()
+  expect(intro!.y - header!.height).toBeLessThan(60)
   await page.getByRole("button", { name: "Send message" }).click()
   await expect(page.getByText("Enter your name.")).toBeVisible()
   await page.getByLabel("Name", { exact: true }).fill("Test Visitor")
@@ -157,6 +168,7 @@ test("contact validation and submission, admin guard and safe preview checkout",
     await page.goto(route)
     await expect(page).toHaveURL(/\/admin\/login$/)
     await expect(page.getByRole("heading", { name: "Admin sign-in" })).toBeVisible()
+    await expect(page.locator(".site-footer")).toHaveCount(0)
   }
   await page.goto("/checkout")
   await expect(page.getByText("Online payment is currently unavailable.", { exact: false })).toBeVisible()
@@ -188,6 +200,7 @@ test("footer wordmark fills after it is fully revealed across public pages", asy
     await page.evaluate(() => document.fonts.ready)
     const fill = () => wordmark.evaluate((node) => node.style.getPropertyValue("--footer-fill"))
     await expect.poll(fill, { message: route }).toBe("0.00%")
+    await expect(page.locator(".site-footer")).toHaveCSS("position", "sticky")
     await scrollPastWordmarkReveal(page, -30)
     expect(await fill(), route).toBe("0.00%")
     await scrollPastWordmarkReveal(page, 6)
@@ -196,6 +209,7 @@ test("footer wordmark fills after it is fully revealed across public pages", asy
     const duringFill = parseFloat(await fill())
     expect(duringFill, route).toBeGreaterThan(20)
     expect(duringFill, route).toBeLessThan(90)
+    await expect(wordmark.locator(".footer-wordmark-fill")).toHaveCSS("transition-duration", "1.2s")
     await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }))
     await expect.poll(() => wordmark.evaluate((node) => node.style.getPropertyValue("--footer-fill")), { message: route }).toBe("100.00%")
   }
@@ -211,6 +225,8 @@ test("About matches the editorial layout, navigation and responsive accessibilit
   await expect(page.getByRole("heading", { name: "Formed by colour." })).toBeVisible()
   await expect(page.locator(".home-masthead .hero-panel")).toBeVisible()
   await expect(page.locator("#care")).toBeAttached()
+  const process = page.locator("section").filter({ has: page.getByRole("heading", { name: "The work in every facet." }) })
+  await expect(process.locator("img")).toHaveCount(0)
 
   for (const url of ["/", "/about", "/shop", product, "/contact", "/checkout", "/admin/login"]) {
     await page.goto(url)

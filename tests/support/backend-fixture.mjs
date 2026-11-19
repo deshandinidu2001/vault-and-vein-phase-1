@@ -16,7 +16,7 @@ const productFields = ["slug", "name", "gem_type", "cut", "carat", "length_mm", 
   "treatment", "origin", "description", "price_lkr", "tint", "certified", "is_featured", "is_published", "is_sample", "collections"]
 
 await db.exec("create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users (id uuid primary key);")
-for (const name of ["202611180001_catalogue.sql", "202611180002_checkout.sql"]) {
+for (const name of ["202611180001_catalogue.sql", "202611180002_checkout.sql", "202611190001_inventory_management.sql"]) {
   await db.exec(await readFile(new URL("../../supabase/migrations/" + name, import.meta.url), "utf8"))
 }
 await db.query("insert into auth.users values ($1), ($2);", [admin, visitor])
@@ -26,6 +26,11 @@ await db.query(`
   (id,slug,name,gem_type,cut,carat,length_mm,width_mm,depth_mm,colour,clarity,treatment,origin,description,price_lkr,is_published,tint)
   values ($1,'fixture-sapphire','Fixture Sapphire','sapphire','Oval',2,8,6,4,'Blue','Eye clean','Heated','Sri Lanka','Browser fixture only.',125000,true,'#253e8c')
 `, [stone])
+await db.query(`
+  insert into public.products
+  (slug,name,gem_type,cut,carat,length_mm,width_mm,depth_mm,colour,clarity,treatment,origin,description,price_lkr,is_published,is_sample,tint)
+  values ('fixture-sample','Fixture Sample','garnet','Oval',2,8,6,4,'Red','Eye clean','None','Sri Lanka','Sample fixture.',24000,true,true,'#782f51')
+`)
 
 const json = (value) => Buffer.from(JSON.stringify(value)).toString("base64url")
 function token(id) {
@@ -43,9 +48,18 @@ async function rest(table, method, url, input, privileged) {
   const id = url.searchParams.get("id")?.slice(3)
   if (table === "products" && method === "GET") {
     if (id && privileged) return one((await db.query("select * from public.products where id = $1", [id])).rows)
-    return (await db.query("select * from public.products" + (privileged ? "" : " where is_published") + " order by name")).rows
+    const status = url.searchParams.get("status")?.slice(3) ?? null
+    const query = "select * from public.products where archived_at is null and ($1::text is null or status = $1)"
+    return (await db.query(query + (privileged ? "" : " and is_published") + " order by name", [status])).rows
   }
+  if (table === "gem_categories" && method === "GET") return (await db.query("select * from public.gem_categories order by name")).rows
   if (!privileged) throw new Error("Fixture rejected a private database request")
+  if (table === "gem_categories") {
+    const slug = url.searchParams.get("slug")?.slice(3)
+    if (method === "POST") return (await db.query("insert into public.gem_categories (slug,name) values ($1,$2) returning slug", [input.slug, input.name])).rows
+    if (method === "PATCH") return (await db.query("update public.gem_categories set name = $1 where slug = $2 returning slug", [input.name, slug])).rows
+    if (method === "DELETE") return (await db.query("delete from public.gem_categories where slug = $1 and not is_builtin returning slug", [slug])).rows
+  }
   if (table === "rpc/consume_rate_limit") {
     return (await db.query("select public.consume_rate_limit($1,$2,$3) as allowed", [input.p_key, input.p_max, input.p_seconds])).rows[0].allowed
   }
@@ -85,12 +99,16 @@ async function rest(table, method, url, input, privileged) {
       productFields.map((key) => input[key]))).rows
   }
   if (table === "products" && method === "PATCH") {
+    if ("archived_at" in input) return (await db.query(
+      "update public.products set archived_at = $1, is_published = false where id = $2 and archived_at is null and status = 'available' returning id",
+      [input.archived_at, id],
+    )).rows
     if ("name" in input) {
       const changes = productFields.map((field, index) => field + " = $" + (index + 2)).join(",")
-      return (await db.query("update public.products set " + changes + " where id = $1 and status = 'available' returning id",
+      return (await db.query("update public.products set " + changes + " where id = $1 and archived_at is null and status = 'available' returning id",
         [id, ...productFields.map((key) => input[key])])).rows
     }
-    return (await db.query("update public.products set is_published = $1 where id = $2 and status <> 'reserved' returning id", [input.is_published, id])).rows
+    return (await db.query("update public.products set is_published = $1 where id = $2 and archived_at is null and status <> 'reserved' returning id", [input.is_published, id])).rows
   }
   throw new Error(method + " " + table + " is outside the local fixture")
 }
@@ -121,7 +139,7 @@ const server = createServer(async (request, response) => {
     const body = request.headers.accept?.includes("vnd.pgrst.object") && Array.isArray(result) ? one(result) : result
     send(200, body)
   } catch (error) {
-    send(error.code === "P0001" || error.code === "23505" ? 400 : 500, { code: error.code, message: error.message })
+    send(["P0001", "23505", "23503"].includes(error.code) ? 400 : 500, { code: error.code, message: error.message })
   }
 })
 await new Promise((resolve) => server.listen(3212, "127.0.0.1", resolve))

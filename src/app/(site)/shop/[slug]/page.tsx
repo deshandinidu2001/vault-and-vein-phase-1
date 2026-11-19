@@ -7,7 +7,7 @@ import { StoneCard } from "@/components/shop/stone-card"
 import { StonePrice } from "@/components/shop/stone-price"
 import { Badge } from "@/components/ui/badge"
 import { getRelated, getStoneBySlug } from "@/lib/data"
-import { gemNames, type Stone } from "@/types/stone"
+import { stoneCategory, type Stone } from "@/types/stone"
 import { site } from "@/config/site"
 import { pageMetadata, serializeJsonLd } from "@/lib/seo"
 
@@ -27,7 +27,7 @@ function ProductData({ stone }: { stone: Stone }) {
     "@type": "Product",
     name: stone.name,
     sku: stone.id,
-    category: gemNames[stone.gem_type],
+    category: stoneCategory(stone),
     color: stone.colour,
     description: (stone.is_sample ? "Sample listing. " : "") + stone.description,
     url: new URL(path, site.url).href,
@@ -48,7 +48,7 @@ export default async function StoneDetail({ params }: Props) {
   if (!stone) notFound()
   const related = await getRelated(stone)
   const details = [
-    ["Gem type", gemNames[stone.gem_type]], ["Cut", stone.cut], ["Weight", stone.carat + " ct"],
+    ["Gem type", stoneCategory(stone)], ["Cut", stone.cut], ["Weight", stone.carat + " ct"],
     ["Dimensions", [stone.length_mm, stone.width_mm, stone.depth_mm].join(" × ") + " mm"],
     ["Colour", stone.colour], ["Clarity", stone.clarity], ["Treatment", stone.treatment], ["Origin", stone.origin],
     ["Lab report", stone.certified ? (stone.is_sample ? "Indicated in sample record" : "Available on request") : "Not listed"],
@@ -60,7 +60,7 @@ export default async function StoneDetail({ params }: Props) {
     <div className="film-grid !items-start">
       <ProductGallery stone={stone} />
       <div className="grid gap-5">
-        <p className="eyebrow text-[#785520]">{gemNames[stone.gem_type]}{stone.is_sample && " / Sample stone"}</p>
+        <p className="eyebrow text-[#785520]">{stoneCategory(stone)}{stone.is_sample && " / Sample stone"}</p>
         <h1 className="text-[clamp(3rem,6vw,5.8rem)]">{stone.name}</h1>
         <p>{stone.description}</p>
         <div className="flex flex-wrap items-center gap-4">

@@ -54,8 +54,9 @@ export function SiteFooter() {
       }
       const updateLayout = () => {
         const headerHeight = document.querySelector(".site-header")?.getBoundingClientRect().height ?? 0
+        const topPadding = parseFloat(getComputedStyle(element).paddingTop)
         // A tall footer stays in the document flow so all its links can scroll into view.
-        element.toggleAttribute("data-reveal-sticky", element.offsetHeight <= window.innerHeight - headerHeight - 16)
+        element.toggleAttribute("data-reveal-sticky", element.offsetHeight - topPadding <= window.innerHeight - headerHeight - 16)
         scheduleFill()
       }
       const resize = new ResizeObserver(updateLayout)

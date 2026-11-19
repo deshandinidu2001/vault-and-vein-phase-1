@@ -1,6 +1,7 @@
 import type { GemCut } from "@/components/three/gem-shape"
 
-export type GemType = "sapphire" | "spinel" | "garnet" | "alexandrite" | "chrysoberyl"
+export type GemType = string
+export type GemCategory = { slug: string; name: string; is_visible: boolean }
 export type StoneCollection = "engagement" | "rare" | "parcels"
 export type StoneStatus = "available" | "reserved" | "sold"
 
@@ -9,6 +10,8 @@ export type Stone = {
   slug: string
   name: string
   gem_type: GemType
+  categoryName?: string
+  image_url?: string | null
   cut: GemCut
   carat: number
   length_mm: number
@@ -29,6 +32,10 @@ export type Stone = {
   collections: StoneCollection[]
 }
 
-export const gemNames: Record<GemType, string> = {
+export const gemNames: Record<string, string | undefined> = {
   sapphire: "Sapphire", spinel: "Spinel", garnet: "Garnet", alexandrite: "Alexandrite", chrysoberyl: "Chrysoberyl",
+}
+
+export function stoneCategory(stone: Pick<Stone, "gem_type" | "categoryName">) {
+  return stone.categoryName ?? (Object.hasOwn(gemNames, stone.gem_type) ? gemNames[stone.gem_type] : undefined) ?? stone.gem_type
 }

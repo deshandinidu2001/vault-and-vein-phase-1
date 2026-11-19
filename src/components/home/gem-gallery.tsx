@@ -10,13 +10,13 @@ import { SectionHeading } from "@/components/ui/section-heading"
 import { GemArt } from "@/components/three/gem-art"
 import { useUi } from "@/store/ui"
 import { formatPrice } from "@/lib/pricing"
-import { gemNames, type Stone } from "@/types/stone"
+import { stoneCategory, type Stone } from "@/types/stone"
 
 const filters = [["all", "All"], ["sapphire", "Sapphire"], ["spinel", "Spinel"], ["garnet", "Garnet"], ["rare", "Rare"]] as const
 type Filter = (typeof filters)[number][0]
 const previewSize = 4
 
-export function GemGallery({ stones }: { stones: Stone[] }) {
+export function GemGallery({ stones, categoryLabels }: { stones: Stone[]; categoryLabels: Record<string, string> }) {
   const [filter, setFilter] = useState<Filter>("all")
   const [selected, setSelected] = useState<string | null>(null)
   const [railEdges, setRailEdges] = useState({ start: true, end: false })
@@ -57,7 +57,7 @@ export function GemGallery({ stones }: { stones: Stone[] }) {
             rail.current?.scrollTo({ left: 0, behavior: "instant" })
             setRailEdges({ start: true, end: false })
           }} className="flex flex-wrap gap-2">
-          {filters.map(([value, label]) => <ToggleGroupItem key={value} value={value} className="h-auto min-h-12 min-w-12 rounded-full! border border-cream/30 px-4 text-cream hover:bg-cream/15 hover:text-cream data-[state=on]:bg-gold data-[state=on]:text-deep">{label}</ToggleGroupItem>)}
+          {filters.map(([value, label]) => <ToggleGroupItem key={value} value={value} className="h-auto min-h-12 min-w-12 rounded-full! border border-cream/30 px-4 text-cream hover:bg-cream/15 hover:text-cream data-[state=on]:bg-gold data-[state=on]:text-deep">{value === "rare" || value === "all" ? label : categoryLabels[value] ?? label}</ToggleGroupItem>)}
         </ToggleGroup>
         <ul ref={rail} className="gallery-rail" aria-label="Gemstone preview" onScroll={(event) => {
           const track = event.currentTarget
@@ -74,7 +74,7 @@ export function GemGallery({ stones }: { stones: Stone[] }) {
                   label={"Illustration of " + item.name} />
               </div>
               <div className="grid content-start gap-2 pt-4">
-                <p className="eyebrow">{gemNames[item.gem_type]}</p>
+                <p className="eyebrow">{stoneCategory(item)}</p>
                 <h3 className="text-[clamp(1.6rem,2.5vw,2.2rem)]">{item.name}</h3>
                 <p className="text-sm text-cream/80">{item.cut} <span aria-hidden="true">·</span> {item.carat} ct <span aria-hidden="true">·</span> {item.colour}</p>
                 <button className="line-link gallery-open w-fit text-sm" type="button" aria-label={"Open this stone: " + item.name} aria-haspopup="dialog" onClick={(event) => {
@@ -115,7 +115,7 @@ export function GemGallery({ stones }: { stones: Stone[] }) {
             <div className="grid gap-6 pt-4 md:grid-cols-2 md:items-center">
               <div className="stone-art rounded-2xl"><GemArt cut={stone.cut} tint={stone.tint} label={"Illustration of " + stone.name} sizes="(min-width: 768px) 350px, 80vw" /></div>
               <div className="grid gap-3" aria-live="polite">
-                <p className="eyebrow text-[#785520]">{gemNames[stone.gem_type]}{stone.is_sample && " / Sample stone"}</p>
+                <p className="eyebrow text-[#785520]">{stoneCategory(stone)}{stone.is_sample && " / Sample stone"}</p>
                 <DialogTitle className="font-display text-4xl">{stone.name}</DialogTitle>
                 <DialogDescription>{stone.description}</DialogDescription>
                 <dl className="grid grid-cols-2 gap-2 text-sm">

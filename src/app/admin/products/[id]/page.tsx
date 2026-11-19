@@ -2,8 +2,8 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { z } from "zod"
 import { requireAdminDatabase } from "@/lib/admin-auth"
-import { collections, gemCuts, gemTypes, productFlags, type ProductInput } from "@/lib/admin-product"
-import { gemNames } from "@/types/stone"
+import { collections, gemCuts, productFlags, type ProductInput } from "@/lib/admin-product"
+import { getGemCategories } from "@/lib/gem-categories"
 import { saveProduct } from "../../actions"
 
 const textFields = [
@@ -14,7 +14,7 @@ const numberFields = [
   ["carat", "Weight (ct)"], ["length_mm", "Length (mm)"], ["width_mm", "Width (mm)"],
   ["depth_mm", "Depth (mm)"], ["price_lkr", "Price (LKR)"],
 ] as const
-const inputStyle = "min-h-11 w-full rounded-lg border border-input bg-background px-3"
+const inputStyle = "admin-field"
 const messages = {
   invalid: "Check the listing fields and use at most two decimal places for measurements.",
   duplicate: "This URL slug already exists.",
@@ -25,6 +25,7 @@ export default async function EditProduct({ params, searchParams }: PageProps<"/
   const db = await requireAdminDatabase()
   const { id } = await params
   const { result } = await searchParams
+  const { categories } = await getGemCategories()
   let product: (ProductInput & { status: string }) | undefined
   if (id !== "new") {
     if (!z.uuid().safeParse(id).success) notFound()
@@ -32,16 +33,16 @@ export default async function EditProduct({ params, searchParams }: PageProps<"/
     if (error) throw new Error("Could not refresh reservations")
     const query = await db.from("products").select("*").eq("id", id).maybeSingle()
     if (query.error) throw new Error("Could not load the listing")
-    if (!query.data) notFound()
+    if (!query.data || query.data.archived_at) notFound()
     product = query.data
   }
   const message = typeof result === "string" && Object.hasOwn(messages, result) ? messages[result as keyof typeof messages] : null
   return <section className="max-w-3xl space-y-6">
-    <Link href="/admin" className="line-link">Back to inventory</Link>
+    <Link href="/admin" className="admin-text-link">Back to inventory</Link>
     <h1>{product ? "Edit listing" : "New listing"}</h1>
     {message && <p role="alert">{message}</p>}
     {product && product.status !== "available" ? <p>{product.name} is {product.status}. Listing details are locked while the stone is held or sold.</p> :
-      <form action={saveProduct.bind(null, product ? id : null)} className="grid gap-5 rounded-2xl border border-emerald/15 p-5">
+      <form action={saveProduct.bind(null, product ? id : null)} className="admin-panel grid gap-5 p-5 sm:p-7">
         <div className="grid gap-4 sm:grid-cols-2">
           {textFields.map(([name, label]) => <label key={name} className="grid gap-2">{label}
             <input name={name} className={inputStyle} required maxLength={name === "slug" ? 80 : 120}
@@ -49,7 +50,7 @@ export default async function EditProduct({ params, searchParams }: PageProps<"/
           </label>)}
           <label className="grid gap-2">Gem type
             <select name="gem_type" className={inputStyle} defaultValue={product?.gem_type}>
-              {gemTypes.map((type) => <option key={type} value={type}>{gemNames[type]}</option>)}
+              {categories.map(({ slug, name }) => <option key={slug} value={slug}>{name}</option>)}
             </select>
           </label>
           <label className="grid gap-2">Cut
@@ -87,7 +88,7 @@ export default async function EditProduct({ params, searchParams }: PageProps<"/
             </label>)}
           </div>
         </fieldset>
-        <button className="pill pill-primary w-fit" type="submit">Save listing</button>
+        <button className="admin-button admin-button-primary w-fit" type="submit">Save listing</button>
       </form>}
   </section>
 }

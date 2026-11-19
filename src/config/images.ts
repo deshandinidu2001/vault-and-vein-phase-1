@@ -57,5 +57,4 @@ export const photos = {
     zoom: 1,
   },
   aboutHeritage: { ...sapphirePhoto, origin: "63% 47%", zoom: 1.08 },
-  aboutCraft: editorialPhotos.bench,
 } satisfies Record<string, PhotoSlot>

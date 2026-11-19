@@ -9,13 +9,14 @@ import { GemGallery } from "@/components/home/gem-gallery"
 import { HeroSlider } from "@/components/home/hero-slider"
 
 import { getFeatured } from "@/lib/data"
+import { getGemCategories } from "@/lib/gem-categories"
 import { pageMetadata } from "@/lib/seo"
 import { site } from "@/config/site"
 
 export const metadata = pageMetadata(site.tagline, site.description, "/")
 
 export default async function Home() {
-  const stones = await getFeatured()
+  const [stones, { categories }] = await Promise.all([getFeatured(), getGemCategories()])
   return (
     <>
       <HeroSlider />
@@ -23,7 +24,7 @@ export default async function Home() {
         <CollectionEdit />
         <Experience />
         <EngagementEdit />
-        <GemGallery stones={stones} />
+        <GemGallery stones={stones} categoryLabels={Object.fromEntries(categories.map(({ slug, name }) => [slug, name]))} />
         <CareEdit />
         <Faq />
         <FinalCall />

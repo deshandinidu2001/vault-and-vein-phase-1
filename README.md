@@ -15,7 +15,7 @@ Open http://localhost:3000. Without Supabase, the store uses the 12 sample listi
 
 ## Connect the backend
 
-1. Create or select a Supabase project. Apply the two SQL files in `supabase/migrations/` in filename order on that project.
+1. Create or select a Supabase project. Apply the SQL files in `supabase/migrations/` in filename order on that project. If you already ran the catalogue and checkout migrations, apply only `202611190001_inventory_management.sql`.
 2. Copy `.env.example` to `.env.local`. Set the Supabase project URL, publishable or anon key, and service-role key. Set the service-role key on the server only. The database starts with an empty catalogue.
 3. In Supabase Auth, create a user with a confirmed email and a password. Disable public sign-ups if the project is dedicated to this store. Use the Auth user ID to grant access:
 
@@ -23,7 +23,7 @@ Open http://localhost:3000. Without Supabase, the store uses the 12 sample listi
    insert into public.admin_users (user_id) values ('ACCOUNT_UUID');
    ```
 
-4. Sign in at `/admin/login`. Create and publish listings from Inventory. Use the Sample listing setting for demonstration stones. The admin Inbox holds submitted contact messages and enquiries. The Orders tab shows payment and shipment status.
+4. Sign in at `/admin/login`. Use Inventory to create, publish, edit, or remove available listings. Removing a listing keeps its order history. Use Categories to add categories or rename them while keeping their filter URLs. Unused custom categories can be deleted. The admin Inbox holds submitted messages, and Orders shows payment and shipment status.
 
 ## Enable PayHere checkout
 

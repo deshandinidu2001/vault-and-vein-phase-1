@@ -5,13 +5,12 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Search, SlidersHorizontal } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { gemNames } from "@/types/stone"
 import type { StoneFilters } from "@/lib/data"
 
 const collections = [["engagement", "Engagement stones"], ["rare", "Collector rarities"], ["parcels", "Parcels for designers"]]
 const sorts = [["featured", "Featured first"], ["price-asc", "Price: low to high"], ["price-desc", "Price: high to low"], ["carat-desc", "Carat: high to low"], ["name", "Name: A to Z"]]
 
-type FiltersProps = { current: StoneFilters; options: { cuts: string[]; colours: string[]; origins: string[] } }
+type FiltersProps = { current: StoneFilters; options: { cuts: string[]; colours: string[]; origins: string[]; types: string[][] } }
 
 export function ShopFilters({ current, options }: FiltersProps) {
   const router = useRouter()
@@ -51,7 +50,7 @@ export function ShopFilters({ current, options }: FiltersProps) {
     <div id="shop-filters" hidden={!expanded}>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[
-          ["type", "Gem type", Object.entries(gemNames)],
+          ["type", "Gem type", options.types],
           ["collection", "Collection", collections],
           ["cut", "Cut", options.cuts.map((value) => [value, value])],
           ["colour", "Colour", options.colours.map((value) => [value, value])],

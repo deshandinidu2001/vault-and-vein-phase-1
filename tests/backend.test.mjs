@@ -9,6 +9,7 @@ import { productInput } from "../src/lib/admin-product.ts"
 const db = new PGlite()
 const sample = await readFile(new URL("../supabase/migrations/202611180001_catalogue.sql", import.meta.url), "utf8")
 const checkout = await readFile(new URL("../supabase/migrations/202611180002_checkout.sql", import.meta.url), "utf8")
+const inventory = await readFile(new URL("../supabase/migrations/202611190001_inventory_management.sql", import.meta.url), "utf8")
 const mint = {
   slug: "mint", name: "Mint Stone", gem_type: "sapphire", cut: "Oval", carat: 2.14,
   length_mm: 8.30, width_mm: 6.40, depth_mm: 4.20, colour: "Green", clarity: "Eye clean",
@@ -21,6 +22,7 @@ before(async () => {
   await db.exec("create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users (id uuid primary key);")
   await db.exec(sample)
   await db.exec(checkout)
+  await db.exec(inventory)
 })
 after(() => db.close())
 
@@ -101,6 +103,27 @@ test("prices come from the catalogue and only available live stones can be held"
   await assert.rejects(reserve([first.id], token, 1000), /attempt already used/)
   await assert.rejects(reserve([first.id, second.id], token, 1000, { first_name: "Other" }), /attempt already used/)
   await assert.rejects(reserve([first.id]), /stones are unavailable/)
+})
+
+test("category edits retain slugs, and deleting listings preserves order history while preventing checkout", async () => {
+  await db.exec("insert into public.gem_categories (slug,name) values ('aquamarine','Aquamarine')")
+  const product = await stone({ gem_type: "aquamarine" })
+  const order = await reserve([product.id])
+  await assert.rejects(db.query("update public.products set archived_at = now(), is_published = false where id = $1", [product.id]), /archived_products_are_unpublished/)
+  assert.equal(await event(order, "-1"), true)
+  await db.query("update public.products set archived_at = now(), is_published = false where id = $1", [product.id])
+  await assert.rejects(reserve([product.id]), /stones are unavailable/)
+  assert.deepEqual((await db.query("select product_id from public.order_items where order_id = $1", [order.id])).rows, [{ product_id: product.id }])
+  await db.exec("update public.gem_categories set name = 'Blue Beryl' where slug = 'aquamarine'")
+  await assert.rejects(db.exec("delete from public.gem_categories where slug = 'aquamarine'"), /foreign key constraint/)
+  await db.exec("set role anon")
+  try {
+    assert.deepEqual((await db.query("select name from public.gem_categories where slug = 'aquamarine'")).rows, [{ name: "Blue Beryl" }])
+    assert.deepEqual((await db.query("select id from public.products where id = $1", [product.id])).rows, [])
+    await assert.rejects(db.exec("update public.gem_categories set name = 'Invalid' where slug = 'aquamarine'"), /permission denied/)
+  } finally {
+    await db.exec("reset role")
+  }
 })
 
 test("paid, pending, duplicate and chargeback notifications preserve inventory", async () => {

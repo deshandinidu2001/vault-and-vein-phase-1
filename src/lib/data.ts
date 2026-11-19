@@ -1,24 +1,28 @@
 import "server-only"
 import { mockStones } from "@/data/stones"
-import { gemNames, type Stone } from "@/types/stone"
+import { stoneCategory, type Stone } from "@/types/stone"
 import { cache } from "react"
 import { connection } from "next/server"
 import { catalogueConfigured, publicDatabase } from "./backend"
+import { getGemCategories } from "./gem-categories"
 
 const loadCatalogue = cache(async (): Promise<Stone[]> => {
   if (!catalogueConfigured) return mockStones.map((stone) => ({ ...stone, is_sample: true }))
   await connection()
   const db = publicDatabase()
+  const { categories, visibilityReady } = await getGemCategories()
+  const categoryNames = new Map(categories.map(({ slug, name }) => [slug, name]))
   const stones: Stone[] = []
+  const columns = "id,slug,name,gem_type,cut,carat,length_mm,width_mm,depth_mm,colour,clarity,treatment,origin,description,price_lkr,status,reserved_until,is_featured,is_sample,model_key,tint,certified,collections"
   for (let start = 0; ; start += 500) {
     const { data, error } = await db.from("products")
-      .select("id,slug,name,gem_type,cut,carat,length_mm,width_mm,depth_mm,colour,clarity,treatment,origin,description,price_lkr,status,reserved_until,is_featured,is_sample,model_key,tint,certified,collections")
+      .select(visibilityReady ? columns + ",image_url" : columns)
       .eq("is_published", true).order("slug").range(start, start + 499)
     if (error) throw new Error("The catalogue is temporarily unavailable.")
     const rows = data as (Stone & { reserved_until: string | null })[]
     for (const { reserved_until, ...stone } of rows) {
       if (stone.status === "reserved" && reserved_until && Date.parse(reserved_until) <= Date.now()) stone.status = "available"
-      stones.push(stone)
+      stones.push({ ...stone, categoryName: categoryNames.get(stone.gem_type) })
     }
     if (rows.length < 500) return stones
   }
@@ -67,7 +71,7 @@ export async function getStones(filters: StoneFilters = {}) {
     stone.carat >= (filters.minCarat ?? 0) && stone.carat <= (filters.maxCarat ?? Infinity) &&
     stone.price_lkr >= (filters.minPrice ?? 0) && stone.price_lkr <= (filters.maxPrice ?? Infinity) &&
     (!search || search.split(/\s+/).every((word) =>
-      normalize([stone.name, gemNames[stone.gem_type], stone.colour, stone.cut, stone.origin, stone.description].join(" ")).includes(word))),
+      normalize([stone.name, stoneCategory(stone), stone.colour, stone.cut, stone.origin, stone.description].join(" ")).includes(word))),
   )
   const sorters: Record<string, (a: Stone, b: Stone) => number> = {
     "price-asc": (a, b) => a.price_lkr - b.price_lkr,
@@ -102,9 +106,9 @@ export async function getRelated(stone: Stone, limit = 4) {
 }
 
 export async function getStoneOptions() {
-  const catalogue = await loadCatalogue()
+  const [catalogue, { categories }] = await Promise.all([loadCatalogue(), getGemCategories()])
   const values = (key: "cut" | "colour" | "origin") => [...new Set(catalogue.map((stone) => stone[key]))].sort()
-  return { cuts: values("cut"), colours: values("colour"), origins: values("origin") }
+  return { cuts: values("cut"), colours: values("colour"), origins: values("origin"), types: categories.map(({ slug, name }) => [slug, name]) }
 }
 
 export async function getStoneSlugs() {

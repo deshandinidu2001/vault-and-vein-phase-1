@@ -37,13 +37,11 @@ export default function About() {
         </div>
       </div>
     </section>
-    <section className="wrap section">
-      <div className="grid gap-8">
-          <SectionHeading eyebrow="From rough to polish">The work in every facet.</SectionHeading>
-          <dl className="grid gap-6 md:grid-cols-3">
-            {process.map(([title, text]) => <div className="grid content-start gap-3 border-t border-emerald/20 pt-5" key={title} data-reveal><dt className="font-display text-3xl font-semibold">{title}</dt><dd className="text-muted-foreground">{text}</dd></div>)}
-          </dl>
-      </div>
+    <section className="wrap section grid gap-8">
+      <SectionHeading eyebrow="From rough to polish">The work in every facet.</SectionHeading>
+      <dl className="grid gap-6 md:grid-cols-3">
+        {process.map(([title, text]) => <div className="grid content-start gap-3 border-t border-emerald/20 pt-5" key={title} data-reveal><dt className="font-display text-3xl font-semibold">{title}</dt><dd className="text-muted-foreground">{text}</dd></div>)}
+      </dl>
     </section>
     <section className="wrap section grid gap-6 border-b border-emerald/15">
       <SectionHeading eyebrow="What we value">Clear information. Room for curiosity.</SectionHeading>
