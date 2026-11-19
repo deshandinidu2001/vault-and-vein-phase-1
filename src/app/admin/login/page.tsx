@@ -12,6 +12,7 @@ export default async function AdminLogin({ searchParams }: PageProps<"/admin/log
   const error = typeof result === "string" && Object.hasOwn(errors, result) ? errors[result as keyof typeof errors] : null
   return <section className="admin-panel mx-auto max-w-md space-y-6 p-6 sm:p-9">
     <h1>Admin sign-in</h1>
+    {result === "changed" && <p role="status">Password changed. Sign in with your new password.</p>}
     {backendConfigured ? <form action={signIn} className="grid gap-4">
       <label className="grid gap-2">Email
         <input className="admin-field" type="email" name="email" autoComplete="username" maxLength={254} required />

@@ -1,10 +1,18 @@
-.stone-card { min-width: 0; border-radius: 1rem; overflow: hidden; border: 1px solid #0b3d2e26; background: #fffaf052; transition: translate .3s var(--easing), border-color .3s; }
+.stone-card { min-width: 0; border-radius: 1.125rem; overflow: hidden; border: 1px solid #0b3d2e26; background: #fbf8ef; transition: border-color .25s; }
 .dark-panel .stone-card { border-color: #f6f1e729; background: #f6f1e709; }
-.stone-card:hover, .stone-card:focus-within { translate: 0 -.25rem; border-color: #b58a39; }
+.stone-card:hover, .stone-card:focus-within { border-color: #9c7840; }
 .stone-art { position: relative; isolation: isolate; aspect-ratio: 1.2; overflow: hidden; background: radial-gradient(ellipse at 50% 40%,#eee6d3,#e4dbc8); }
 .dark-panel .stone-art { background: radial-gradient(ellipse at 55% 45%,#245242,#0b2b22 75%); }
-.stone-art img { padding: 5%; transition: scale .4s var(--easing); }
-.stone-card:hover .stone-art img, .stone-card:focus-within .stone-art img { scale: 1.07; }
-.product-gallery .product-view-tabs { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); width: min(100%,24rem); height: auto; gap: .25rem; padding: .25rem; border: 1px solid #0b3d2e1f; border-radius: 999px; }
-.product-gallery .product-view-tab { height: auto; min-height: 44px; padding-inline: .35rem; border-radius: 999px; color: #33463b; }
-.product-gallery .product-view-tab[data-state=active] { background: #0b3d2e; color: #f6f1e7; }
+.stone-art img { transition: scale .4s var(--easing); }
+.stone-art img.gem-illustration { padding: 5%; }
+.stone-card .stone-art { aspect-ratio: 4 / 3; }
+.stone-card-arrow { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 100%; background: #e5eadf; }
+.stone-card:hover .stone-card-arrow, .stone-card:focus-within .stone-card-arrow { background: #0b3d2e; color: #fbf8ef; }
+.product-feature-image { aspect-ratio: 4 / 3; border-radius: 1.5rem; }
+.product-photo-strip { display: flex; gap: .625rem; overflow-x: auto; padding: .25rem; }
+.product-photo-strip > li { flex: 0 0 clamp(3.75rem, 9vw, 5.5rem); }
+.product-photo-thumbnail { position: relative; display: block; width: 100%; aspect-ratio: 1; border-radius: .65rem; border: 2px solid transparent; overflow: hidden; background: #e3dcc9; }
+.product-photo-thumbnail[aria-pressed=true] { outline: 2px solid #0b3d2e; outline-offset: 1px; }
+.product-photo-thumbnail:focus-visible { outline: 2px solid #9c6a24; outline-offset: 1px; }
+.product-purchase { border-top: 1px solid #0b3d2e26; padding-block-start: clamp(1rem, 2.5vw, 2rem); }
+.product-details { background: #fbf8ef; border: 1px solid #0b3d2e26; border-radius: 1.5rem; }

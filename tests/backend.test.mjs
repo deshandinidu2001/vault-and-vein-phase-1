@@ -5,11 +5,15 @@ import { after, before, test } from "node:test"
 import { PGlite } from "@electric-sql/pglite"
 import { asPayHereAmount, checkoutHash, notification } from "../src/lib/payhere.ts"
 import { productInput } from "../src/lib/admin-product.ts"
+import { productPhotoUrl } from "../src/lib/product-photo.ts"
 
 const db = new PGlite()
 const sample = await readFile(new URL("../supabase/migrations/202611180001_catalogue.sql", import.meta.url), "utf8")
 const checkout = await readFile(new URL("../supabase/migrations/202611180002_checkout.sql", import.meta.url), "utf8")
 const inventory = await readFile(new URL("../supabase/migrations/202611190001_inventory_management.sql", import.meta.url), "utf8")
+const photos = await readFile(new URL("../supabase/migrations/202611190002_product_photos_and_category_visibility.sql", import.meta.url), "utf8")
+const filters = await readFile(new URL("../supabase/migrations/202611190003_shop_filter_settings.sql", import.meta.url), "utf8")
+const galleries = await readFile(new URL("../supabase/migrations/202611190004_product_galleries_and_gem_types.sql", import.meta.url), "utf8")
 const mint = {
   slug: "mint", name: "Mint Stone", gem_type: "sapphire", cut: "Oval", carat: 2.14,
   length_mm: 8.30, width_mm: 6.40, depth_mm: 4.20, colour: "Green", clarity: "Eye clean",
@@ -23,6 +27,9 @@ before(async () => {
   await db.exec(sample)
   await db.exec(checkout)
   await db.exec(inventory)
+  await db.exec(photos)
+  await db.exec(filters)
+  await db.exec(galleries)
 })
 after(() => db.close())
 
@@ -50,6 +57,34 @@ async function status(table, id) {
   const { rows } = await db.query("select status from public." + table + " where id = $1", [id])
   return rows[0].status
 }
+
+test("admins can configure shop filters without removing matching listings", async () => {
+  const product = await stone({ cut: "Marquise", collections: ["estate-stones"] })
+  await db.exec("set role service_role")
+  try {
+    await db.exec("insert into public.shop_filter_settings (filter_key, value, label) values ('cut','marquise','Marquise'), ('collection','estate-stones','Estate stones'), ('price','','')")
+    await db.exec("update public.shop_filter_settings set is_visible = false where filter_key = 'price' or value = 'marquise'")
+    await assert.rejects(db.exec("update public.shop_filter_settings set label = 'New label' where value = 'marquise'"), /permission denied/)
+    await assert.rejects(db.exec("insert into public.shop_filter_settings (filter_key,value,label) values ('price','5','Five')"), /check constraint/)
+  } finally {
+    await db.exec("reset role")
+  }
+
+  for (const role of ["anon", "authenticated"]) {
+    await db.exec("set role " + role)
+    try {
+      const settings = await db.query("select value, is_visible from public.shop_filter_settings order by value")
+      assert.deepEqual(settings.rows, [
+        { value: "", is_visible: false }, { value: "estate-stones", is_visible: true }, { value: "marquise", is_visible: false },
+      ])
+      assert.deepEqual((await db.query("select id from public.products where id = $1", [product.id])).rows, [{ id: product.id }])
+      await assert.rejects(db.exec("update public.shop_filter_settings set is_visible = true"), /permission denied/)
+      await assert.rejects(db.exec("insert into public.shop_filter_settings (filter_key) values ('q')"), /permission denied/)
+    } finally {
+      await db.exec("reset role")
+    }
+  }
+})
 
 test("publish visibility, private order and inbox data, and RPC permissions", async () => {
   const live = await stone()
@@ -105,7 +140,7 @@ test("prices come from the catalogue and only available live stones can be held"
   await assert.rejects(reserve([first.id]), /stones are unavailable/)
 })
 
-test("category edits retain slugs, and deleting listings preserves order history while preventing checkout", async () => {
+test("deleting listings preserves order history while preventing checkout", async () => {
   await db.exec("insert into public.gem_categories (slug,name) values ('aquamarine','Aquamarine')")
   const product = await stone({ gem_type: "aquamarine" })
   const order = await reserve([product.id])
@@ -123,6 +158,65 @@ test("category edits retain slugs, and deleting listings preserves order history
     await assert.rejects(db.exec("update public.gem_categories set name = 'Invalid' where slug = 'aquamarine'"), /permission denied/)
   } finally {
     await db.exec("reset role")
+  }
+})
+
+test("the service role can create gem types and change their visibility, and hidden listings cannot be bought", async () => {
+  const product = await stone({ gem_type: "garnet" })
+  await db.exec("set role service_role")
+  try {
+    await db.exec("insert into public.gem_categories (slug,name) values ('test-gem','Test gem')")
+    await assert.rejects(db.exec("insert into public.gem_categories (slug,name,is_builtin) values ('bad-gem','Bad gem',true)"), /permission denied/)
+    await assert.rejects(db.exec("update public.gem_categories set name = 'New name' where slug = 'garnet'"), /permission denied/)
+    await assert.rejects(db.exec("delete from public.gem_categories where slug = 'garnet'"), /permission denied/)
+    await db.exec("update public.gem_categories set is_visible = false where slug = 'garnet'")
+    await assert.rejects(reserve([product.id]), /stones are unavailable/)
+    assert.equal(await status("products", product.id), "available")
+  } finally {
+    await db.exec("reset role")
+  }
+
+  for (const role of ["anon", "authenticated"]) {
+    await db.exec("set role " + role)
+    try {
+      assert.deepEqual((await db.query("select slug from public.gem_categories where slug = 'garnet'")).rows, [])
+      assert.deepEqual((await db.query("select slug from public.gem_categories where slug = 'test-gem'")).rows, [{ slug: "test-gem" }])
+      assert.deepEqual((await db.query("select id from public.products where id = $1", [product.id])).rows, [])
+      await assert.rejects(db.exec("update public.gem_categories set is_visible = true where slug = 'garnet'"), /permission denied/)
+      await assert.rejects(db.exec("insert into public.gem_categories (slug,name) values ('guest-gem','Guest gem')"), /permission denied/)
+    } finally {
+      await db.exec("reset role")
+    }
+  }
+  await db.exec("set role service_role")
+  try {
+    await db.exec("update public.gem_categories set is_visible = true where slug = 'garnet'")
+    assert.ok(await reserve([product.id]))
+  } finally {
+    await db.exec("reset role")
+  }
+})
+
+test("product photos use a restricted Cloudinary delivery path", async () => {
+  const photo = "https://res.cloudinary.com/vault-fixture/image/upload/v1/vault-and-vein/products/" + randomUUID() + ".png"
+  const product = await stone({ image_url: photo })
+  assert.equal(product.image_url, photo)
+  assert.deepEqual(product.gallery_urls, [])
+  const extra = photo.replace(/[^/]+$/, randomUUID() + ".png")
+  await db.exec("set role service_role")
+  try {
+    const { rows } = await db.query("update public.products set gallery_urls = $1 where id = $2 returning gallery_urls", [[extra], product.id])
+    assert.deepEqual(rows[0].gallery_urls, [extra])
+    for (const invalid of [[photo], [extra, extra], [null], ["https://example.test/extra.png"]]) {
+      await assert.rejects(db.query("update public.products set gallery_urls = $1 where id = $2", [invalid, product.id]), /products_gallery_check/)
+    }
+  } finally {
+    await db.exec("reset role")
+  }
+  assert.match(productPhotoUrl(photo, 180), /\/c_limit,w_180,f_auto,q_auto\/v1\//)
+  for (const invalid of [photo + "?other=1", photo.replace("res.cloudinary.com", "example.test"), photo.replace(/\.png$/, ".svg")]) {
+    assert.equal(productPhotoUrl(invalid, 180), null)
+    await assert.rejects(stone({ image_url: invalid }), /products_image_url_check/)
   }
 })
 
@@ -207,5 +301,6 @@ test("admin validates editable listing values before database writes", () => {
   assert.equal(productInput.safeParse({ ...mint, slug: "--broken" }).success, false)
   assert.equal(productInput.safeParse({ ...mint, carat: "2.145" }).success, false)
   assert.equal(productInput.safeParse({ ...mint, price_lkr: 0 }).success, false)
-  assert.equal(productInput.safeParse({ ...mint, collections: ["invalid"] }).success, false)
+  assert.equal(productInput.safeParse({ ...mint, collections: ["Invalid collection"] }).success, false)
+  assert.equal(productInput.safeParse({ ...mint, cut: "Marquise", collections: ["estate-stones"] }).success, true)
 })

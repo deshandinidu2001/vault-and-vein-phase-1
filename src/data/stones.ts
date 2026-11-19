@@ -1,4 +1,5 @@
 import type { Stone } from "@/types/stone"
+import { gemModelCut } from "@/components/three/gem-shape"
 
 type Sample = Omit<Stone, "id" | "model_key">
 const samples: Sample[] = [
@@ -77,5 +78,5 @@ const samples: Sample[] = [
 ]
 
 export const mockStones: Stone[] = samples.map((stone, index) => ({
-  ...stone, id: "vv-" + String(index + 1).padStart(3, "0"), model_key: stone.cut,
+  ...stone, id: "vv-" + String(index + 1).padStart(3, "0"), model_key: gemModelCut(stone.cut),
 }))

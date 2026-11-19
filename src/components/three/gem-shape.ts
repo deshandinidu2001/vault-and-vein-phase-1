@@ -1,4 +1,9 @@
-export type GemCut = "Oval" | "Cushion" | "Round" | "Emerald" | "Pear" | "Trillion"
+export const gemCuts = ["Oval", "Cushion", "Round", "Emerald", "Pear", "Trillion"] as const
+export type GemCut = typeof gemCuts[number]
+
+export function gemModelCut(cut: string): GemCut {
+  return gemCuts.find((shape) => shape.toLowerCase() === cut.trim().toLowerCase()) ?? "Round"
+}
 export type GemStage = 0 | 1 | 2
 
 const outlines: Partial<Record<GemCut, [number, number][]>> = {

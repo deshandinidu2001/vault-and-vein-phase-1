@@ -7,7 +7,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { SectionHeading } from "@/components/ui/section-heading"
-import { GemArt } from "@/components/three/gem-art"
+import { StoneMedia } from "@/components/product/stone-media"
 import { useUi } from "@/store/ui"
 import { formatPrice } from "@/lib/pricing"
 import { stoneCategory, type Stone } from "@/types/stone"
@@ -57,7 +57,8 @@ export function GemGallery({ stones, categoryLabels }: { stones: Stone[]; catego
             rail.current?.scrollTo({ left: 0, behavior: "instant" })
             setRailEdges({ start: true, end: false })
           }} className="flex flex-wrap gap-2">
-          {filters.map(([value, label]) => <ToggleGroupItem key={value} value={value} className="h-auto min-h-12 min-w-12 rounded-full! border border-cream/30 px-4 text-cream hover:bg-cream/15 hover:text-cream data-[state=on]:bg-gold data-[state=on]:text-deep">{value === "rare" || value === "all" ? label : categoryLabels[value] ?? label}</ToggleGroupItem>)}
+          {filters.filter(([value]) => value === "rare" || value === "all" || Object.hasOwn(categoryLabels, value)).map(([value, label]) =>
+            <ToggleGroupItem key={value} value={value} className="h-auto min-h-12 min-w-12 rounded-full! border border-cream/30 px-4 text-cream hover:bg-cream/15 hover:text-cream data-[state=on]:bg-gold data-[state=on]:text-deep">{value === "rare" || value === "all" ? label : categoryLabels[value]}</ToggleGroupItem>)}
         </ToggleGroup>
         <ul ref={rail} className="gallery-rail" aria-label="Gemstone preview" onScroll={(event) => {
           const track = event.currentTarget
@@ -70,8 +71,8 @@ export function GemGallery({ stones, categoryLabels }: { stones: Stone[]; catego
               initial={{ opacity: 0, y: reduced ? 0 : 12 }} animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }} transition={{ duration: reduced ? 0 : .3, delay: reduced ? 0 : Math.min(index, 5) * .06 }} className="gallery-card">
               <div className="stone-art">
-                <GemArt cut={item.cut} tint={item.tint} sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 76vw"
-                  label={"Illustration of " + item.name} />
+                <StoneMedia stone={item} sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 76vw"
+                  label={(item.image_url ? "Photo of " : "Illustration of ") + item.name} />
               </div>
               <div className="grid content-start gap-2 pt-4">
                 <p className="eyebrow">{stoneCategory(item)}</p>
@@ -113,7 +114,7 @@ export function GemGallery({ stones, categoryLabels }: { stones: Stone[]; catego
           }}>
           {stone && <>
             <div className="grid gap-6 pt-4 md:grid-cols-2 md:items-center">
-              <div className="stone-art rounded-2xl"><GemArt cut={stone.cut} tint={stone.tint} label={"Illustration of " + stone.name} sizes="(min-width: 768px) 350px, 80vw" /></div>
+              <div className="stone-art rounded-2xl"><StoneMedia stone={stone} label={(stone.image_url ? "Photo of " : "Illustration of ") + stone.name} sizes="(min-width: 768px) 350px, 80vw" /></div>
               <div className="grid gap-3" aria-live="polite">
                 <p className="eyebrow text-[#785520]">{stoneCategory(stone)}{stone.is_sample && " / Sample stone"}</p>
                 <DialogTitle className="font-display text-4xl">{stone.name}</DialogTitle>

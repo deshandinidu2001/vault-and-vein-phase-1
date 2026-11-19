@@ -16,7 +16,7 @@ const productFields = ["slug", "name", "gem_type", "cut", "carat", "length_mm", 
   "treatment", "origin", "description", "price_lkr", "tint", "certified", "is_featured", "is_published", "is_sample", "collections"]
 
 await db.exec("create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users (id uuid primary key);")
-for (const name of ["202611180001_catalogue.sql", "202611180002_checkout.sql", "202611190001_inventory_management.sql"]) {
+for (const name of ["202611180001_catalogue.sql", "202611180002_checkout.sql", "202611190001_inventory_management.sql", "202611190002_product_photos_and_category_visibility.sql", "202611190003_shop_filter_settings.sql", "202611190004_product_galleries_and_gem_types.sql"]) {
   await db.exec(await readFile(new URL("../../supabase/migrations/" + name, import.meta.url), "utf8"))
 }
 await db.query("insert into auth.users values ($1), ($2);", [admin, visitor])
@@ -47,18 +47,36 @@ function one(rows) {
 async function rest(table, method, url, input, privileged) {
   const id = url.searchParams.get("id")?.slice(3)
   if (table === "products" && method === "GET") {
-    if (id && privileged) return one((await db.query("select * from public.products where id = $1", [id])).rows)
+    if (id) return one((await db.query("select * from public.products where id = $1" +
+      (privileged ? "" : " and archived_at is null and is_published and exists (select 1 from public.gem_categories c where c.slug = gem_type and c.is_visible)"), [id])).rows)
+    const photo = url.searchParams.get("image_url")?.slice(3)
+    if (photo && privileged) return (await db.query("select id from public.products where image_url = $1", [photo])).rows
     const status = url.searchParams.get("status")?.slice(3) ?? null
     const query = "select * from public.products where archived_at is null and ($1::text is null or status = $1)"
-    return (await db.query(query + (privileged ? "" : " and is_published") + " order by name", [status])).rows
+    return (await db.query(query + (privileged ? "" : " and is_published and exists (select 1 from public.gem_categories c where c.slug = gem_type and c.is_visible)") + " order by name", [status])).rows
   }
-  if (table === "gem_categories" && method === "GET") return (await db.query("select * from public.gem_categories order by name")).rows
+  if (table === "gem_categories" && method === "GET") {
+    return (await db.query("select * from public.gem_categories where $1 or is_visible order by name", [privileged])).rows
+  }
+  if (table === "shop_filter_settings" && method === "GET") {
+    return (await db.query("select * from public.shop_filter_settings order by filter_key,value")).rows
+  }
   if (!privileged) throw new Error("Fixture rejected a private database request")
-  if (table === "gem_categories") {
-    const slug = url.searchParams.get("slug")?.slice(3)
-    if (method === "POST") return (await db.query("insert into public.gem_categories (slug,name) values ($1,$2) returning slug", [input.slug, input.name])).rows
-    if (method === "PATCH") return (await db.query("update public.gem_categories set name = $1 where slug = $2 returning slug", [input.name, slug])).rows
-    if (method === "DELETE") return (await db.query("delete from public.gem_categories where slug = $1 and not is_builtin returning slug", [slug])).rows
+  if (table === "gem_categories" && method === "POST") {
+    await db.query("insert into public.gem_categories (slug,name) values ($1,$2)", [input.slug, input.name])
+    return null
+  }
+  if (table === "shop_filter_settings" && method === "POST") {
+    return (await db.query("insert into public.shop_filter_settings (filter_key,value,label,is_visible) values ($1,$2,$3,$4) returning filter_key",
+      [input.filter_key, input.value, input.label, input.is_visible ?? true])).rows
+  }
+  if (table === "shop_filter_settings" && method === "PATCH") {
+    return (await db.query("update public.shop_filter_settings set is_visible=$1 where filter_key=$2 and value=$3 returning filter_key",
+      [input.is_visible, url.searchParams.get("filter_key")?.slice(3), url.searchParams.get("value")?.slice(3)])).rows
+  }
+  if (table === "gem_categories" && method === "PATCH") {
+    return (await db.query("update public.gem_categories set is_visible = $1 where slug = $2 returning slug",
+      [input.is_visible, url.searchParams.get("slug")?.slice(3)])).rows
   }
   if (table === "rpc/consume_rate_limit") {
     return (await db.query("select public.consume_rate_limit($1,$2,$3) as allowed", [input.p_key, input.p_max, input.p_seconds])).rows[0].allowed
@@ -94,19 +112,27 @@ async function rest(table, method, url, input, privileged) {
     return (await db.query("update public.inbox set read_at = $1 where id = $2 and read_at is null returning id", [input.read_at, id])).rows
   }
   if (table === "products" && method === "POST") {
-    const params = productFields.map((_, index) => "$" + (index + 1))
-    return (await db.query("insert into public.products (" + productFields.join(",") + ") values (" + params.join(",") + ") returning id",
-      productFields.map((key) => input[key]))).rows
+    const fields = "image_url" in input ? [...productFields, "image_url"] : productFields
+    const params = fields.map((_, index) => "$" + (index + 1))
+    return (await db.query("insert into public.products (" + fields.join(",") + ") values (" + params.join(",") + ") returning id",
+      fields.map((key) => input[key]))).rows
   }
   if (table === "products" && method === "PATCH") {
+    if ("gallery_revision" in input) return (await db.query(
+      "update public.products set image_url=$1, gallery_urls=$2, gallery_revision=$3 where id=$4 and gallery_revision=$5 and archived_at is null and status='available' returning id",
+      [input.image_url, input.gallery_urls, input.gallery_revision, id, url.searchParams.get("gallery_revision")?.slice(3)],
+    )).rows
     if ("archived_at" in input) return (await db.query(
       "update public.products set archived_at = $1, is_published = false where id = $2 and archived_at is null and status = 'available' returning id",
       [input.archived_at, id],
     )).rows
     if ("name" in input) {
-      const changes = productFields.map((field, index) => field + " = $" + (index + 2)).join(",")
-      return (await db.query("update public.products set " + changes + " where id = $1 and archived_at is null and status = 'available' returning id",
-        [id, ...productFields.map((key) => input[key])])).rows
+      const fields = "image_url" in input ? [...productFields, "image_url"] : productFields
+      const changes = fields.map((field, index) => field + " = $" + (index + 2)).join(",")
+      const current = url.searchParams.get("image_url")
+      const filter = !current ? "" : current === "is.null" ? " and image_url is null" : " and image_url = $" + (fields.length + 2)
+      return (await db.query("update public.products set " + changes + " where id = $1 and archived_at is null and status = 'available'" + filter + " returning id",
+        [id, ...fields.map((key) => input[key]), ...(current?.startsWith("eq.") ? [current.slice(3)] : [])])).rows
     }
     return (await db.query("update public.products set is_published = $1 where id = $2 and archived_at is null and status <> 'reserved' returning id", [input.is_published, id])).rows
   }
@@ -150,6 +176,8 @@ const child = spawn(process.execPath, ["./node_modules/next/dist/bin/next", "dev
     ...process.env, VAULT_VEIN_BROWSER_FIXTURE: "1", NEXT_PUBLIC_SITE_URL: "https://vault-fixture.example", NEXT_PUBLIC_SUPABASE_URL: api,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: anonymous, SUPABASE_SERVICE_ROLE_KEY: service,
     PAYHERE_MODE: "sandbox", PAYHERE_MERCHANT_ID: "000000", PAYHERE_MERCHANT_SECRET: "fixture-merchant-secret", SHIPPING_LKR: "500",
+    CLOUDINARY_CLOUD_NAME: "vault-fixture", CLOUDINARY_API_KEY: "fixture-cloud-key", CLOUDINARY_API_SECRET: "fixture-cloud-secret",
+    NODE_OPTIONS: [process.env.NODE_OPTIONS, "--import=" + new URL("./cloudinary-fixture.mjs", import.meta.url).href].filter(Boolean).join(" "),
   },
 })
 child.on("exit", async (code) => {

@@ -1,8 +1,5 @@
 import { z } from "zod"
 
-export const gemCuts = ["Oval", "Cushion", "Round", "Emerald", "Pear", "Trillion"] as const
-export const collections = ["engagement", "rare", "parcels"] as const
-
 const shortText = z.string().trim().min(1).max(120)
 const dimension = z.coerce.number().min(.01).max(999999.99).multipleOf(.01)
 export const slugInput = z.string().trim().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/).max(80)
@@ -11,7 +8,7 @@ export const productInput = z.object({
   slug: slugInput,
   name: shortText,
   gem_type: slugInput,
-  cut: z.enum(gemCuts),
+  cut: shortText,
   carat: dimension,
   length_mm: dimension,
   width_mm: dimension,
@@ -27,7 +24,7 @@ export const productInput = z.object({
   is_featured: z.boolean(),
   is_published: z.boolean(),
   is_sample: z.boolean(),
-  collections: z.array(z.enum(collections)).max(3),
+  collections: z.array(slugInput).max(32),
 })
 export type ProductInput = z.infer<typeof productInput>
 export const productFlags = [

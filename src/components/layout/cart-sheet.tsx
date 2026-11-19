@@ -1,9 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowUpRight, Trash2 } from "lucide-react"
+import { ArrowUpRight, CreditCard, Trash2 } from "lucide-react"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { GemArt } from "@/components/three/gem-art"
+import { StoneMedia } from "@/components/product/stone-media"
 import { StonePrice } from "@/components/shop/stone-price"
 import { restoreOverlayFocus, useUi } from "@/store/ui"
 import { useCart } from "@/store/cart"
@@ -21,7 +21,7 @@ export function CartSheet({ paymentsEnabled }: { paymentsEnabled: boolean }) {
       <SheetContent side="right" data-lenis-prevent onCloseAutoFocus={restoreOverlayFocus} className="overlay-scroll w-[min(100vw,28rem)]! max-w-none! overflow-y-auto">
         <SheetHeader className="px-6 pt-12">
           <SheetTitle className="font-display text-4xl">Your cart</SheetTitle>
-          <SheetDescription>{paymentsEnabled ? "Review your stones before checkout or send an enquiry." : "Shortlist stones for an enquiry."}</SheetDescription>
+          <SheetDescription>Review your selected stones.</SheetDescription>
         </SheetHeader>
         {items.length === 0 ? <div className="space-y-5 px-6 pb-8">
           <p>Your cart is empty.</p>
@@ -30,7 +30,7 @@ export function CartSheet({ paymentsEnabled }: { paymentsEnabled: boolean }) {
           <ul className="grid gap-3">
             {items.map((item) => <li key={item.id} className="grid grid-cols-[64px_minmax(0,1fr)_44px] items-center gap-3 border-b border-emerald/15 pb-3">
               <div className="relative size-16 overflow-hidden rounded-lg bg-muted">
-                <GemArt cut={item.cut} tint={item.tint} label="" sizes="64px" />
+                <StoneMedia stone={item} label="" sizes="64px" width={160} />
               </div>
               <div className="min-w-0">
                 <Link href={"/shop/" + item.slug} onClick={closeOverlay} className="flex min-h-11 items-center font-semibold hover:underline">{item.name}</Link>
@@ -46,11 +46,20 @@ export function CartSheet({ paymentsEnabled }: { paymentsEnabled: boolean }) {
             </li>)}
           </ul>
           <div className="flex flex-wrap justify-between gap-2 font-semibold"><span>{!payable.length ? "Sample total" : "Stone subtotal"}</span><StonePrice lkr={total} /></div>
-          {hasSamples && payable.length > 0 && <p className="text-sm text-muted-foreground">Sample stones are available by enquiry. Checkout includes the other stones.</p>}
-          {payable.length > 0 && !paymentsEnabled && <p className="text-sm text-muted-foreground">Online payment is currently unavailable. You can enquire about these stones.</p>}
-          {paymentsEnabled && payable.length > 12 && <p className="text-sm text-muted-foreground">Pay for a single stone or reduce the cart to 12 payable stones.</p>}
-          {canCheckout && <Link href="/checkout" className="pill pill-primary" onClick={closeOverlay}>Go to checkout</Link>}
-          <button type="button" className={canCheckout ? "pill" : "pill pill-primary"} onClick={() => openEnquiry(items)}>Request these stones</button>
+          {hasSamples && payable.length > 0 && <p className="text-sm text-muted-foreground">Sample stones are available by enquiry.</p>}
+          <section className="grid gap-3 rounded-xl border border-emerald/15 bg-[#e8ebe0] p-4" aria-labelledby="cart-checkout-title">
+            <h2 id="cart-checkout-title" className="flex items-center gap-2 font-sans text-base font-semibold"><CreditCard size={18} aria-hidden="true" /> Online checkout</h2>
+            <p className="text-sm text-muted-foreground">
+              {!payable.length ? "Sample stones are available by enquiry."
+                : !paymentsEnabled ? "Online payment is currently unavailable."
+                  : payable.length > 12 ? "Pay for a single stone or reduce the cart to 12 payable stones."
+                    : "Review delivery and pay in LKR through PayHere."}
+            </p>
+            {canCheckout
+              ? <Link href="/checkout" className="pill pill-primary" onClick={closeOverlay}>Go to checkout</Link>
+              : <button type="button" className="pill pill-primary" disabled>Go to checkout</button>}
+          </section>
+          <button type="button" className="pill" onClick={() => openEnquiry(items)}>Request these stones</button>
         </div>}
       </SheetContent>
     </Sheet>

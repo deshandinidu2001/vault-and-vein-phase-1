@@ -11,7 +11,7 @@
   color: var(--admin-ink);
 }
 
-.admin-wrap { width: min(calc(100% - 2rem), 76rem); margin-inline: auto; }
+.admin-wrap { width: calc(100% - clamp(2rem, 5vw, 5rem)); margin-inline: auto; }
 .admin-masthead { background: var(--admin-navy); color: var(--admin-white); border-bottom: 3px solid var(--admin-brass); }
 .admin-masthead .admin-wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; column-gap: 1rem; padding-block: .65rem; }
 .admin-brand { display: inline-flex; min-height: 44px; align-items: center; flex-wrap: wrap; gap: .35rem .75rem; font-family: Georgia, serif; font-size: 1.25rem; }
@@ -58,16 +58,21 @@
 .admin-button-danger:hover { background: #f9e5e6; }
 .admin-ledger { display: grid; gap: .6rem; }
 .admin-inventory-row { display: grid; align-items: center; gap: .6rem 1rem; padding: 1rem; }
+.admin-inventory-item { display: flex; align-items: center; gap: .85rem; min-width: 0; }
+.admin-photo { position: relative; overflow: hidden; background: #e6e9ee; border: 1px solid var(--admin-line); border-radius: .2rem; }
+.admin-photo-thumb { width: 70px; aspect-ratio: 1; flex: none; }
+.admin-photo-preview { width: min(100%, 10rem); aspect-ratio: 1; }
+.admin-photo-field { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 1rem; padding-block: .75rem 1rem; border-bottom: 1px solid var(--admin-line); }
+.admin-field[type=file]::file-selector-button { margin-inline-end: .75rem; cursor: pointer; font-weight: 600; }
 .admin-stock-status { text-transform: capitalize; }
 .admin-stock-status[data-status=available] { color: #22633f; font-weight: 650; }
 .admin-delete summary { width: fit-content; min-height: 44px; align-content: center; color: #861f27; font-size: .875rem; cursor: pointer; }
 .admin-inventory-row .admin-delete { grid-column: 1 / -1; border-top: 1px solid var(--admin-line); }
-.admin-categories { display: grid; gap: .75rem; align-items: start; }
+.admin-category-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem 1rem; padding: .9rem 1rem; }
 
 @media (min-width: 760px) {
   .admin-workspace { grid-template: "title title" auto "nav content" 1fr / 10rem minmax(0, 1fr); }
   .admin-sidebar { display: grid; }
-  .admin-categories { grid-template-columns: minmax(12rem, .85fr) minmax(0, 1.6fr); }
 }
 @media (min-width: 980px) {
   .admin-inventory-row { grid-template-columns: minmax(0, 1.15fr) minmax(8rem, .7fr) minmax(14rem, 1fr); }

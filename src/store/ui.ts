@@ -7,6 +7,8 @@ type UiState = {
   currency: Currency
   toggleCurrency: () => void
   overlay: "cart" | "enquiry" | "menu" | null
+  cartOpened: boolean
+  enquiryOpened: boolean
   enquiry: EnquiryStone[]
   returnFocus: HTMLElement | null
   openCart: () => void
@@ -24,12 +26,14 @@ export const useUi = create<UiState>((set) => ({
   currency: "LKR",
   toggleCurrency: () => set(({ currency }) => ({ currency: currency === "LKR" ? "USD" : "LKR" })),
   overlay: null,
+  cartOpened: false,
+  enquiryOpened: false,
   enquiry: [],
   returnFocus: null,
-  openCart: () => set({ overlay: "cart", returnFocus: focusedElement() }),
+  openCart: () => set({ overlay: "cart", cartOpened: true, returnFocus: focusedElement() }),
   openMenu: () => set({ overlay: "menu", returnFocus: focusedElement() }),
   openEnquiry: (stones = []) => set((state) => ({
-    overlay: "enquiry", enquiry: stones,
+    overlay: "enquiry", enquiryOpened: true, enquiry: stones,
     returnFocus: state.overlay ? state.returnFocus : focusedElement(),
   })),
   closeOverlay: () => set({ overlay: null }),

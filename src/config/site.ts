@@ -25,10 +25,10 @@ export const navigation = [
 ]
 
 export const gemLinks = [
-  { href: "/shop?type=sapphire", label: "Sapphires" },
-  { href: "/shop?type=spinel", label: "Spinel" },
-  { href: "/shop?type=garnet", label: "Garnet" },
-  { href: "/shop?collection=rare", label: "Rare finds" },
+  { href: "/shop?type=sapphire", label: "Sapphires", category: "sapphire" },
+  { href: "/shop?type=spinel", label: "Spinel", category: "spinel" },
+  { href: "/shop?type=garnet", label: "Garnet", category: "garnet" },
+  { href: "/shop?collection=rare", label: "Rare finds", category: null },
 ]
 
 export const returnNote = site.returnWindowDays === null

@@ -2,7 +2,6 @@ import type { GemCut } from "@/components/three/gem-shape"
 
 export type GemType = string
 export type GemCategory = { slug: string; name: string; is_visible: boolean }
-export type StoneCollection = "engagement" | "rare" | "parcels"
 export type StoneStatus = "available" | "reserved" | "sold"
 
 export type Stone = {
@@ -12,7 +11,7 @@ export type Stone = {
   gem_type: GemType
   categoryName?: string
   image_url?: string | null
-  cut: GemCut
+  cut: string
   carat: number
   length_mm: number
   width_mm: number
@@ -29,7 +28,7 @@ export type Stone = {
   model_key: GemCut
   tint: string
   certified: boolean
-  collections: StoneCollection[]
+  collections: string[]
 }
 
 export const gemNames: Record<string, string | undefined> = {

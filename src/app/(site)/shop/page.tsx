@@ -23,6 +23,7 @@ function pageLink(query: Query, page: number) {
 
 async function Results({ filters, query }: { filters: StoneFilters; query: Query }) {
   const { stones, total, page, pages } = await getStones(filters)
+  const filtering = Object.entries(filters).some(([key, value]) => key !== "page" && key !== "sort" && value !== undefined)
   return <section id="results" className="space-y-6" aria-labelledby="results-title">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h2 id="results-title" className="text-4xl">{catalogueConfigured ? "Stones" : "Sample stones"}</h2>
@@ -31,9 +32,11 @@ async function Results({ filters, query }: { filters: StoneFilters; query: Query
     {stones.length ? <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {stones.map((stone) => <li key={stone.id}><StoneCard stone={stone} /></li>)}
     </ul> : <div className="grid justify-items-start gap-3 rounded-2xl border border-emerald/15 p-8">
-      <h3>No stones match these filters.</h3>
-      <p>Try a wider range or clear the filters to see the full catalogue.</p>
-      <Link href="/shop" className="pill">Clear filters</Link>
+      <h3>{filtering ? "No stones match these filters." : "No stones are listed right now."}</h3>
+      <p>{filtering ? "Try a wider range or clear the filters to see the full catalogue." : "Check back for new listings or contact us about a stone."}</p>
+      {filtering
+        ? <Link href="/shop" className="pill">Clear filters</Link>
+        : <Link href="/contact" className="pill">Contact us</Link>}
     </div>}
     {pages > 1 && <nav className="flex flex-wrap items-center gap-2" aria-label="Catalogue pages">
       {page > 1 && <Link className="pill" href={pageLink(query, page - 1)}>Previous</Link>}
@@ -47,11 +50,11 @@ async function Results({ filters, query }: { filters: StoneFilters; query: Query
 }
 
 async function Catalogue({ searchParams }: { searchParams: Promise<Query> }) {
-  const [query, options] = await Promise.all([searchParams, getStoneOptions()])
+  const [query, config] = await Promise.all([searchParams, getStoneOptions()])
   const filters = parseStoneFilters(query)
   const queryKey = JSON.stringify(filters)
   return <>
-    <ShopFilters key={"filters:" + queryKey} current={filters} options={options} />
+    <ShopFilters key={"filters:" + queryKey} current={filters} config={config} />
     <Suspense key={"results:" + queryKey} fallback={<ShopSkeleton />}>
       <Results filters={filters} query={query} />
     </Suspense>

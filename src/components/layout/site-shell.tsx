@@ -1,10 +1,19 @@
 import { CartHydration } from "./cart-hydration"
-import { CartSheet } from "./cart-sheet"
-import { EnquirySheet } from "./enquiry-sheet"
+import { Suspense } from "react"
+import { StoreOverlays } from "./store-overlays"
 import { SiteFooter } from "./site-footer"
 import { SiteHeader } from "./site-header"
 import { Toaster } from "sonner"
 import { checkoutConfig } from "@/lib/checkout"
+import { getGemCategories } from "@/lib/gem-categories"
+import { gemLinks } from "@/config/site"
+
+async function Footer() {
+  const { categories } = await getGemCategories()
+  const shown = new Set(categories.map(({ slug }) => slug))
+  const shopLinks = gemLinks.filter(({ category }) => !category || shown.has(category))
+  return <SiteFooter shopLinks={shopLinks} />
+}
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
   return <>
@@ -12,10 +21,9 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
     <SiteHeader />
     <div className="site-frame">
       <div className="site-page-surface">{children}</div>
-      <SiteFooter />
+      <Suspense fallback={null}><Footer /></Suspense>
     </div>
-    <CartSheet paymentsEnabled={Boolean(checkoutConfig())} />
-    <EnquirySheet />
+    <StoreOverlays paymentsEnabled={Boolean(checkoutConfig())} />
     <Toaster theme="light" position="bottom-center" />
   </>
 }

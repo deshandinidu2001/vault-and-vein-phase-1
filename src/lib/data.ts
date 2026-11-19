@@ -4,7 +4,19 @@ import { stoneCategory, type Stone } from "@/types/stone"
 import { cache } from "react"
 import { connection } from "next/server"
 import { catalogueConfigured, publicDatabase } from "./backend"
-import { getGemCategories } from "./gem-categories"
+import { getGemCategories, isMissingInventorySchema } from "./gem-categories"
+import { gemModelCut } from "@/components/three/gem-shape"
+import { normalizeShopOption, shopFilterConfig } from "./shop-filter-config"
+import { getShopFilterSettings } from "./shop-filter-settings"
+import type { GemCategory } from "@/types/stone"
+
+const columns = "id,slug,name,gem_type,cut,carat,length_mm,width_mm,depth_mm,colour,clarity,treatment,origin,description,price_lkr,status,reserved_until,is_featured,is_sample,model_key,tint,certified,collections"
+type ProductRow = Omit<Stone, "model_key"> & { model_key: string; reserved_until: string | null }
+
+function catalogueStone({ reserved_until, ...stone }: ProductRow, categoryNames: Map<string, string>): Stone {
+  const expired = stone.status === "reserved" && reserved_until && Date.parse(reserved_until) <= Date.now()
+  return { ...stone, status: expired ? "available" : stone.status, model_key: gemModelCut(stone.model_key), categoryName: categoryNames.get(stone.gem_type) }
+}
 
 const loadCatalogue = cache(async (): Promise<Stone[]> => {
   if (!catalogueConfigured) return mockStones.map((stone) => ({ ...stone, is_sample: true }))
@@ -13,17 +25,14 @@ const loadCatalogue = cache(async (): Promise<Stone[]> => {
   const { categories, visibilityReady } = await getGemCategories()
   const categoryNames = new Map(categories.map(({ slug, name }) => [slug, name]))
   const stones: Stone[] = []
-  const columns = "id,slug,name,gem_type,cut,carat,length_mm,width_mm,depth_mm,colour,clarity,treatment,origin,description,price_lkr,status,reserved_until,is_featured,is_sample,model_key,tint,certified,collections"
   for (let start = 0; ; start += 500) {
     const { data, error } = await db.from("products")
       .select(visibilityReady ? columns + ",image_url" : columns)
       .eq("is_published", true).order("slug").range(start, start + 499)
+      .overrideTypes<ProductRow[], { merge: false }>()
     if (error) throw new Error("The catalogue is temporarily unavailable.")
-    const rows = data as (Stone & { reserved_until: string | null })[]
-    for (const { reserved_until, ...stone } of rows) {
-      if (stone.status === "reserved" && reserved_until && Date.parse(reserved_until) <= Date.now()) stone.status = "available"
-      stones.push({ ...stone, categoryName: categoryNames.get(stone.gem_type) })
-    }
+    const rows = data
+    stones.push(...rows.map(row => catalogueStone(row, categoryNames)))
     if (rows.length < 500) return stones
   }
 })
@@ -40,7 +49,7 @@ export const pageSize = 8
 export function parseStoneFilters(query: Query): StoneFilters {
   const value = (key: string) => {
     const raw = query[key]
-    return (typeof raw === "string" ? raw : raw?.[0])?.trim().slice(0, 100) || undefined
+    return (typeof raw === "string" ? raw : raw?.[0])?.trim().slice(0, key === "q" ? 100 : 120) || undefined
   }
   const number = (key: string) => {
     const raw = value(key)
@@ -55,7 +64,7 @@ export function parseStoneFilters(query: Query): StoneFilters {
   }
 }
 
-const normalize = (value: string) => value.toLowerCase().trim()
+const normalize = normalizeShopOption
 const matches = (actual: string, expected?: string) => !expected || normalize(actual) === normalize(expected)
 const featuredFirst = (a: Stone, b: Stone) => Number(b.is_featured) - Number(a.is_featured)
 
@@ -87,11 +96,37 @@ export async function getStones(filters: StoneFilters = {}) {
   return { stones: filtered.slice((page - 1) * pageSize, page * pageSize), total, page, pages }
 }
 
-export async function getStoneBySlug(slug: string) {
-  return (await loadCatalogue()).find((stone) => stone.slug === slug)
+async function selectPreview(limit: number, slug?: string) {
+  await connection()
+  const db = publicDatabase()
+  function fetchRows(includePhoto: boolean) {
+    const query = db.from("products").select(includePhoto ? columns + ",image_url" : columns).eq("is_published", true)
+    if (slug !== undefined) query.eq("slug", slug)
+    return query.order("is_featured", { ascending: false }).order("slug").limit(limit)
+      .overrideTypes<ProductRow[], { merge: false }>()
+  }
+  const [initial, { categories }] = await Promise.all([fetchRows(true), getGemCategories()])
+  const { data, error } = isMissingInventorySchema(initial.error) ? await fetchRows(false) : initial
+  if (error) throw new Error("The catalogue is temporarily unavailable.")
+  const names = new Map(categories.map(({ slug, name }) => [slug, name]))
+  return data.map(row => catalogueStone(row, names))
+}
+
+export const getStoneBySlug = cache(async (slug: string) => {
+  if (!catalogueConfigured) return (await loadCatalogue()).find(stone => stone.slug === slug)
+  return (await selectPreview(1, slug))[0]
+})
+
+export async function getStoneGallery(id: string): Promise<string[]> {
+  if (!catalogueConfigured) return []
+  const { data, error } = await publicDatabase().from("products").select("gallery_urls").eq("id", id).maybeSingle()
+  if (isMissingInventorySchema(error)) return []
+  if (error) throw new Error("Could not load the product gallery")
+  return data?.gallery_urls ?? []
 }
 
 export async function getFeatured(limit = 8) {
+  if (catalogueConfigured) return selectPreview(limit)
   return [...await loadCatalogue()].sort(featuredFirst).slice(0, limit)
 }
 
@@ -105,10 +140,13 @@ export async function getRelated(stone: Stone, limit = 4) {
     .sort((a, b) => similarity(b) - similarity(a)).slice(0, limit)
 }
 
-export async function getStoneOptions() {
-  const [catalogue, { categories }] = await Promise.all([loadCatalogue(), getGemCategories()])
-  const values = (key: "cut" | "colour" | "origin") => [...new Set(catalogue.map((stone) => stone[key]))].sort()
-  return { cuts: values("cut"), colours: values("colour"), origins: values("origin"), types: categories.map(({ slug, name }) => [slug, name]) }
+export async function getStoneOptions(adminCategories?: GemCategory[]) {
+  const [catalogue, categories, { rows, ready }] = await Promise.all([
+    loadCatalogue(),
+    adminCategories ?? getGemCategories().then((result) => result.categories),
+    getShopFilterSettings(),
+  ])
+  return { ...shopFilterConfig(rows, categories, catalogue), ready }
 }
 
 export async function getStoneSlugs() {

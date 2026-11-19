@@ -10,6 +10,7 @@ alter policy public_gem_categories on public.gem_categories using (is_visible);
 alter table public.products add column image_url text check (
   image_url ~ '^https://res[.]cloudinary[.]com/[a-zA-Z0-9_-]+/image/upload/v[0-9]+/vault-and-vein/products/[a-f0-9-]{36}[.](jpg|jpeg|png|webp)$'
 );
+create unique index products_photo_unique on public.products (image_url) where image_url is not null;
 
 alter policy public_catalogue on public.products using (
   is_published and archived_at is null and exists (

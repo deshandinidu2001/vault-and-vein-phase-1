@@ -5,24 +5,23 @@ import { usePathname } from "next/navigation"
 import { useRef } from "react"
 import { ArrowUp, ArrowUpRight } from "lucide-react"
 import { gsap, useGSAP } from "@/components/animation/motion-provider"
-import { gemLinks, site } from "@/config/site"
+import { site } from "@/config/site"
 import { BrandBadge } from "./site-header"
 import { EnquireButton } from "./enquire-button"
 
 const groups = [
-  { title: "Shop", links: gemLinks },
   { title: "Learn", links: [{ href: "/about", label: "About" }, { href: "/about#care", label: "Care guide" }, { href: "/#faq", label: "FAQ" }] },
   { title: "Policies", links: [{ href: "/shipping", label: "Shipping" }, { href: "/returns", label: "Returns" }, { href: "/privacy", label: "Privacy" }, { href: "/terms", label: "Terms" }] },
 ]
 
-export function SiteFooter() {
+export function SiteFooter({ shopLinks }: { shopLinks: { href: string; label: string }[] }) {
   const footer = useRef<HTMLElement>(null)
   const wordmark = useRef<HTMLDivElement>(null)
   const path = usePathname()
 
   useGSAP(() => {
     const element = footer.current
-    const surface = element?.previousElementSibling
+    const surface = element?.parentElement?.querySelector(":scope > .site-page-surface")
     const mark = wordmark.current
     if (!element || !surface || !mark) return
     const media = gsap.matchMedia()
@@ -97,7 +96,7 @@ export function SiteFooter() {
   return (
     <footer ref={footer} className="site-footer dark-panel" onFocusCapture={(event) => {
       if (!event.target.matches(":focus-visible") || getComputedStyle(event.currentTarget).position !== "sticky") return
-      const surface = event.currentTarget.previousElementSibling
+      const surface = event.currentTarget.parentElement?.querySelector(":scope > .site-page-surface")
       if (surface && event.target.getBoundingClientRect().top < surface.getBoundingClientRect().bottom) {
         window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" })
       }
@@ -116,7 +115,7 @@ export function SiteFooter() {
           </EnquireButton>
         </div>
         <div className="footer-nav" data-footer-rise>
-          {groups.map(({ title, links }) => <nav key={title} aria-label={title} className="grid content-start">
+          {[{ title: "Shop", links: shopLinks }, ...groups].map(({ title, links }) => <nav key={title} aria-label={title} className="grid content-start">
             <p className="eyebrow mb-2">{title}</p>
             <ul>
               {links.map(({ href, label }) => <li key={href}><Link href={href} className="footer-link">{label}</Link></li>)}

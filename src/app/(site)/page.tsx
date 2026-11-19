@@ -7,6 +7,7 @@ import { Faq } from "@/components/home/faq"
 import { FinalCall } from "@/components/home/final-call"
 import { GemGallery } from "@/components/home/gem-gallery"
 import { HeroSlider } from "@/components/home/hero-slider"
+import { Suspense } from "react"
 
 import { getFeatured } from "@/lib/data"
 import { getGemCategories } from "@/lib/gem-categories"
@@ -15,8 +16,12 @@ import { site } from "@/config/site"
 
 export const metadata = pageMetadata(site.tagline, site.description, "/")
 
-export default async function Home() {
+async function FeaturedGallery() {
   const [stones, { categories }] = await Promise.all([getFeatured(), getGemCategories()])
+  return <GemGallery stones={stones} categoryLabels={Object.fromEntries(categories.map(({ slug, name }) => [slug, name]))} />
+}
+
+export default function Home() {
   return (
     <>
       <HeroSlider />
@@ -24,7 +29,7 @@ export default async function Home() {
         <CollectionEdit />
         <Experience />
         <EngagementEdit />
-        <GemGallery stones={stones} categoryLabels={Object.fromEntries(categories.map(({ slug, name }) => [slug, name]))} />
+        <Suspense fallback={<div id="gallery" className="section dark-panel min-h-96" aria-busy="true" aria-label="Loading the gem gallery" />}><FeaturedGallery /></Suspense>
         <CareEdit />
         <Faq />
         <FinalCall />
