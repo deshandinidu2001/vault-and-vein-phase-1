@@ -1,10 +1,10 @@
 "use client"
 
-import Link from "next/link"
+import { NavigationLink } from "./navigation-link"
 import { usePathname } from "next/navigation"
-import { useRef } from "react"
+import { useEffect, useRef } from "react"
 import { ArrowUp, ArrowUpRight } from "lucide-react"
-import { gsap, useGSAP } from "@/components/animation/motion-provider"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import { site } from "@/config/site"
 import { BrandBadge } from "./site-header"
 import { EnquireButton } from "./enquire-button"
@@ -18,80 +18,67 @@ export function SiteFooter({ shopLinks }: { shopLinks: { href: string; label: st
   const footer = useRef<HTMLElement>(null)
   const wordmark = useRef<HTMLDivElement>(null)
   const path = usePathname()
+  const animate = useMediaQuery("(prefers-reduced-motion: no-preference)")
 
-  useGSAP(() => {
+  useEffect(() => {
     const element = footer.current
     const surface = element?.parentElement?.querySelector(":scope > .site-page-surface")
     const mark = wordmark.current
-    if (!element || !surface || !mark) return
-    const media = gsap.matchMedia()
+    if (!animate || !element || !surface || !mark) return
+    const updateFill = () => {
+      const box = mark.getBoundingClientRect()
+      const sticky = getComputedStyle(element).position === "sticky"
+      const surfaceBottom = surface.getBoundingClientRect().bottom
+      const distanceAfterReveal = sticky
+        ? box.top - surfaceBottom
+        : window.innerHeight - box.bottom
+      const footerBox = element.getBoundingClientRect()
+      const availableScroll = sticky ? box.top - footerBox.top : footerBox.bottom - box.bottom
+      const leadIn = 12
+      const fillDistance = Math.max(1, Math.min(112, availableScroll - leadIn))
+      const atEnd = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2
+      const progress = atEnd ? 1 : (distanceAfterReveal - leadIn) / fillDistance
+      mark.toggleAttribute("data-fill-active", progress > 0)
+      mark.style.setProperty("--footer-fill", (Math.min(1, Math.max(0, progress)) * 100).toFixed(2) + "%")
+      const revealed = (window.innerHeight - surfaceBottom) / Math.max(1, Math.min(window.innerHeight * .85, footerBox.height))
+      element.style.setProperty("--footer-rise", String(1 - Math.max(0, Math.min(1, revealed))))
+    }
 
-    media.add("(prefers-reduced-motion: no-preference)", () => {
-      const updateFill = () => {
-        const box = mark.getBoundingClientRect()
-        const sticky = getComputedStyle(element).position === "sticky"
-        const distanceAfterReveal = sticky
-          ? box.top - surface.getBoundingClientRect().bottom
-          : window.innerHeight - box.bottom
-        const footerBox = element.getBoundingClientRect()
-        const availableScroll = sticky ? box.top - footerBox.top : footerBox.bottom - box.bottom
-        const leadIn = 12
-        const fillDistance = Math.max(1, Math.min(112, availableScroll - leadIn))
-        const atEnd = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2
-        const progress = atEnd ? 1 : (distanceAfterReveal - leadIn) / fillDistance
-        mark.toggleAttribute("data-fill-active", progress > 0)
-        mark.style.setProperty("--footer-fill", (gsap.utils.clamp(0, 1, progress) * 100).toFixed(2) + "%")
-      }
-
-      let frame = 0
-      const scheduleFill = () => {
-        if (frame) return
-        frame = requestAnimationFrame(() => {
-          frame = 0
-          updateFill()
-        })
-      }
-      const updateLayout = () => {
-        const headerHeight = document.querySelector(".site-header")?.getBoundingClientRect().height ?? 0
-        const topPadding = parseFloat(getComputedStyle(element).paddingTop)
-        // A tall footer stays in the document flow so all its links can scroll into view.
-        element.toggleAttribute("data-reveal-sticky", element.offsetHeight - topPadding <= window.innerHeight - headerHeight - 16)
-        scheduleFill()
-      }
-      const resize = new ResizeObserver(updateLayout)
-      resize.observe(surface)
-      resize.observe(mark)
-      resize.observe(element)
-      window.addEventListener("scroll", scheduleFill, { passive: true })
-      window.addEventListener("resize", updateLayout)
-      updateLayout()
-      updateFill()
-
-      gsap.from("[data-footer-rise]", {
-        y: 22,
-        opacity: .72,
-        stagger: .12,
-        ease: "power2.out",
-        scrollTrigger: {
-          trigger: surface,
-          start: "bottom bottom",
-          end: () => "+=" + Math.max(1, Math.min(window.innerHeight * .85, element.offsetHeight)),
-          scrub: .28,
-          invalidateOnRefresh: true,
-        },
+    let frame = 0
+    const scheduleFill = () => {
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        updateFill()
       })
-      return () => {
-        resize.disconnect()
-        window.removeEventListener("scroll", scheduleFill)
-        window.removeEventListener("resize", updateLayout)
-        cancelAnimationFrame(frame)
-        element.removeAttribute("data-reveal-sticky")
-        mark.removeAttribute("data-fill-active")
-        mark.style.removeProperty("--footer-fill")
-      }
-    })
-    return () => media.revert()
-  }, { scope: footer, dependencies: [path], revertOnUpdate: true })
+    }
+    const updateLayout = () => {
+      const headerHeight = document.querySelector(".site-header")?.getBoundingClientRect().height ?? 0
+      const topPadding = parseFloat(getComputedStyle(element).paddingTop)
+      // A tall footer stays in the document flow so all its links can scroll into view.
+      element.toggleAttribute("data-reveal-sticky", element.offsetHeight - topPadding <= window.innerHeight - headerHeight - 16)
+      scheduleFill()
+    }
+    const resize = new ResizeObserver(updateLayout)
+    resize.observe(surface)
+    resize.observe(mark)
+    resize.observe(element)
+    window.addEventListener("scroll", scheduleFill, { passive: true })
+    window.addEventListener("resize", updateLayout)
+    updateLayout()
+    updateFill()
+
+    return () => {
+      resize.disconnect()
+      window.removeEventListener("scroll", scheduleFill)
+      window.removeEventListener("resize", updateLayout)
+      cancelAnimationFrame(frame)
+      element.removeAttribute("data-reveal-sticky")
+      element.style.removeProperty("--footer-rise")
+      mark.removeAttribute("data-fill-active")
+      mark.style.removeProperty("--footer-fill")
+    }
+  }, [animate, path])
 
   return (
     <footer ref={footer} className="site-footer dark-panel" onFocusCapture={(event) => {
@@ -104,9 +91,9 @@ export function SiteFooter({ shopLinks }: { shopLinks: { href: string; label: st
       <div className="wrap footer-inner">
         <div className="footer-intro" data-footer-rise>
           <div>
-            <Link href="/" className="footer-brand" aria-label={site.tagline + " Vault & Vein home"}>
+            <NavigationLink href="/" className="footer-brand" aria-label={site.tagline + " Vault & Vein home"}>
               <BrandBadge size={48} /><span>{site.tagline}</span>
-            </Link>
+            </NavigationLink>
             <p className="mt-3 text-sm text-cream/80">Inspired by Sri Lankan gemstone heritage</p>
           </div>
           <EnquireButton className="footer-enquiry pill-gold">
@@ -118,7 +105,7 @@ export function SiteFooter({ shopLinks }: { shopLinks: { href: string; label: st
           {[{ title: "Shop", links: shopLinks }, ...groups].map(({ title, links }) => <nav key={title} aria-label={title} className="grid content-start">
             <p className="eyebrow mb-2">{title}</p>
             <ul>
-              {links.map(({ href, label }) => <li key={href}><Link href={href} className="footer-link">{label}</Link></li>)}
+              {links.map(({ href, label }) => <li key={href}><NavigationLink href={href} className="footer-link">{label}</NavigationLink></li>)}
             </ul>
           </nav>)}
         </div>

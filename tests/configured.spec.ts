@@ -9,10 +9,10 @@ const samplePhoto = {
   buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+yA5sAAAAASUVORK5CYII=", "base64"),
 }
 
-async function login(page: Page, role: "visitor" | "admin") {
+async function login(page: Page, role: "visitor" | "admin", password = adminPassword) {
   await page.goto("/admin/login")
   await page.getByLabel("Email", { exact: true }).fill("vault-fixture-" + role + "@example.test")
-  await page.getByLabel("Password", { exact: true }).fill(adminPassword)
+  await page.getByLabel("Password", { exact: true }).fill(password)
   await page.getByRole("button", { name: "Sign in" }).click()
 }
 
@@ -69,6 +69,9 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   const base = "http://127.0.0.1:3211"
   await page.goto(base + returnPath)
   await expect(page.getByText(/waiting for confirmation/)).toBeVisible()
+  const receiptHeaders = (await request.get(returnPath)).headers()
+  expect(receiptHeaders["referrer-policy"]).toBe("no-referrer")
+  expect(receiptHeaders["cache-control"]).toContain("no-store")
   expect((await request.get("/order/" + orderId + "?key=" + randomUUID())).status()).toBe(404)
   const notify = {
     merchant_id: "000000", order_id: orderId, payment_id: "fixture-payment-1", payhere_amount: amount,
@@ -100,13 +103,21 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page.getByLabel("Upload photo")).toHaveCount(0)
   await page.goto("/admin?view=filters")
   await expect(page).toHaveURL(/\/admin\/login$/)
+  await page.goto("/admin/verify")
+  await expect(page).toHaveURL(/\/admin\/login$/)
   await login(page, "admin")
+  await expect(page).toHaveURL(/\/admin$/)
+  await page.goto("/admin/verify")
+  await expect(page).toHaveURL(/\/admin$/)
   await expect(page.getByRole("heading", { name: "Store admin" })).toBeVisible()
   await expect(page.locator(".site-footer")).toHaveCount(0)
   expect((await page.context().cookies()).some((cookie) => cookie.name.includes("auth-token") && cookie.httpOnly && cookie.sameSite === "Lax")).toBe(true)
   const authenticated = await page.request.get("/admin")
   expect(authenticated.headers()["cache-control"]).toContain("no-store")
   expect(authenticated.headers()["content-security-policy"]).toContain("frame-ancestors 'none'")
+  expect(authenticated.headers()["content-security-policy"]).toContain("'nonce-")
+  const secondPolicy = (await page.request.get("/admin")).headers()["content-security-policy"]
+  expect(secondPolicy).not.toBe(authenticated.headers()["content-security-policy"])
   await page.getByRole("link", { name: "Orders", exact: true }).click()
   await expect(page.getByRole("region", { name: "Online checkout" })).toContainText("PayHere is configured in sandbox mode.")
   await expect(page.getByText("checkout@example.test")).toBeVisible()
@@ -138,6 +149,7 @@ test("configured checkout, webhook verification, durable messages and admin fulf
     await panel.getByRole("textbox", { name: "New " + group.toLowerCase() + " option" }).fill(label)
     await panel.getByRole("button", { name: "Add option", exact: true }).click()
     await expect(page.getByRole("status")).toHaveText("Shop filter option added.")
+    await expect(panel.locator("li").filter({ hasText: label })).toHaveCount(1)
   }
 
   await page.getByRole("link", { name: "Inventory", exact: true }).click()
@@ -235,4 +247,19 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page).toHaveURL(/\/admin\/login$/)
   await page.goto("/admin?view=orders")
   await expect(page).toHaveURL(/\/admin\/login$/)
+  await login(page, "admin")
+  await expect(page).toHaveURL(/\/admin$/)
+  await page.getByRole("link", { name: "vault-fixture-admin@example.test" }).click()
+  for (const current of ["incorrect-password", adminPassword]) {
+    await page.getByLabel("Current password").fill(current)
+    await page.getByLabel("New password", { exact: true }).fill("changed-fixture-passphrase")
+    await page.getByLabel("Confirm new password").fill("changed-fixture-passphrase")
+    await page.getByRole("button", { name: "Save password" }).click()
+    if (current !== adminPassword) await expect(page.getByRole("main").getByRole("alert")).toContainText("could not be verified")
+  }
+  await expect(page.getByRole("status")).toContainText("Password changed")
+  await login(page, "admin")
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("did not grant admin access")
+  await login(page, "admin", "changed-fixture-passphrase")
+  await expect(page.getByRole("heading", { name: "Store admin" })).toBeVisible()
 })

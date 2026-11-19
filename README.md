@@ -23,7 +23,11 @@ Open http://localhost:3000. Without Supabase, the store uses the 12 sample listi
    insert into public.admin_users (user_id) values ('ACCOUNT_UUID');
    ```
 
-4. Sign in at `/admin/login`. Use Inventory to create, publish, edit, or remove available listings. Removing a listing keeps its order history. Use Shop filters to add and show or hide Gem types and manage the other shop filters. Hiding an individual Gem type also hides its listings. The admin Inbox holds submitted messages, and Orders shows payment configuration and shipment status.
+4. Sign in at `/admin/login` with the approved account’s email and password to open the dashboard.
+5. Select the signed-in email above Inventory to change the password. Enter the current password, choose a new one, then sign in again.
+6. Use Inventory to create, publish, edit, or remove available listings. Removing a listing keeps its order history. Use Shop filters to add and show or hide Gem types and manage the other shop filters. Hiding a Gem type also hides its listings. The admin Inbox holds submitted messages, and Orders shows payment configuration and shipment status.
+
+Apply `202611190005_request_limits.sql` after the earlier migrations to check both rate limits in one database call and clean up expired entries.
 
 ## Upload product photos
 

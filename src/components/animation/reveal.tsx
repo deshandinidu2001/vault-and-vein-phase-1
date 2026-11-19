@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, type ReactNode } from "react"
-import { gsap, SplitText, useGSAP } from "./motion-provider"
+import { gsap, SplitText, useGSAP } from "./scroll-tools"
 
 export function Reveal({ children, className }: { children: ReactNode; className?: string }) {
   const scope = useRef<HTMLDivElement>(null)

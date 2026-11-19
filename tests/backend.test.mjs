@@ -30,8 +30,22 @@ before(async () => {
   await db.exec(photos)
   await db.exec(filters)
   await db.exec(galleries)
+  await db.exec(await readFile(new URL("../supabase/migrations/202611190005_request_limits.sql", import.meta.url), "utf8"))
 })
 after(() => db.close())
+
+test("combined request limits preserve both quotas, reclaim expired buckets and restrict execution", async () => {
+  for (const role of ["anon","authenticated"]) {
+    assert.equal((await db.query("select has_function_privilege($1,'public.permit_store_request(text,text,integer)','execute') as allowed", [role])).rows[0].allowed, false)
+  }
+  await db.query("insert into public.rate_limits values ('stale', now() - interval '2 days', 1)")
+  const hit = async (source, email, max) => (await db.query("select public.permit_store_request($1,$2,$3) as ok", [source,email,max])).rows[0].ok
+  assert.equal(await hit("first","one",1), true)
+  assert.equal(await hit("first","two",1), false)
+  for (let i=0; i<6; i++) assert.equal(await hit("other","two",30), true)
+  assert.equal(await hit("other","two",30), false)
+  assert.equal((await db.query("select key from public.rate_limits where key='stale'")).rows.length, 0)
+})
 
 async function stone(overrides = {}) {
   const input = { ...mint, slug: randomUUID(), ...overrides }

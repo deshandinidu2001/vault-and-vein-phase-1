@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type FormEvent } from "react"
+import { useState, useTransition, type FormEvent } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Search, SlidersHorizontal } from "lucide-react"
@@ -10,6 +10,7 @@ import { normalizeShopOption, shopFilterControls, shopSelectFilters, type ShopFi
 
 export function ShopFilters({ current, config }: { current: StoneFilters; config: ShopFilterConfig }) {
   const router = useRouter()
+  const [pending, startTransition] = useTransition()
   const [expanded, setExpanded] = useState(Boolean(current.type || current.cut || current.colour || current.origin || current.certified ||
     current.collection || current.minCarat !== undefined || current.maxCarat !== undefined || current.minPrice !== undefined || current.maxPrice !== undefined))
   const { controls, options } = config
@@ -28,10 +29,10 @@ export function ShopFilters({ current, config }: { current: StoneFilters; config
       if (filter && !(key === "sort" && filter === "featured")) params.set(key, filter)
     })
     const query = params.toString()
-    router.push(query ? "/shop?" + query : "/shop")
+    startTransition(() => router.push(query ? "/shop?" + query : "/shop"))
   }
 
-  return <form action="/shop" method="get" onSubmit={apply} className="grid gap-4 rounded-2xl border border-emerald/15 p-4 md:p-6">
+  return <form action="/shop" method="get" onSubmit={apply} aria-busy={pending} className="grid gap-4 rounded-2xl border border-emerald/15 p-4 md:p-6">
     <div className="flex flex-wrap items-end gap-3">
       {controls.q && <div className="grid w-full gap-2 md:w-auto md:min-w-56 md:flex-1">
         <label className="text-sm font-semibold" htmlFor="shop-query">Search the catalogue</label>
@@ -86,7 +87,7 @@ export function ShopFilters({ current, config }: { current: StoneFilters; config
       </div>
     </div>}
     <div className="flex flex-wrap items-center gap-4">
-      <button type="submit" className="pill pill-primary">Apply filters</button>
+      <button type="submit" className="pill pill-primary" disabled={pending}>{pending ? "Applying…" : "Apply filters"}</button>
       <Link href="/shop" className="line-link text-sm">Clear filters</Link>
     </div>
   </form>

@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react"
 import { collection } from "@/config/collection"
 import { ResponsivePhoto } from "@/components/ui/responsive-photo"
 import { SectionHeading } from "@/components/ui/section-heading"
-import { gsap, useGSAP, type ScrollTrigger } from "@/components/animation/motion-provider"
+import { gsap, useGSAP, type ScrollTrigger } from "@/components/animation/scroll-tools"
 
 export function CollectionEdit() {
   const panel = useRef<HTMLDivElement>(null)

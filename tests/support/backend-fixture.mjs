@@ -10,13 +10,13 @@ const stone = "fd9f8831-e604-48cc-9d2c-79860244d258"
 const service = "fixture-service-key"
 const anonymous = "fixture-anon-key"
 const emailPrefix = "vault-fixture"
-const fixturePassword = "fixture-password"
+let fixturePassword = "fixture-password"
 const api = "http://127.0.0.1:3212"
 const productFields = ["slug", "name", "gem_type", "cut", "carat", "length_mm", "width_mm", "depth_mm", "colour", "clarity",
   "treatment", "origin", "description", "price_lkr", "tint", "certified", "is_featured", "is_published", "is_sample", "collections"]
 
 await db.exec("create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users (id uuid primary key);")
-for (const name of ["202611180001_catalogue.sql", "202611180002_checkout.sql", "202611190001_inventory_management.sql", "202611190002_product_photos_and_category_visibility.sql", "202611190003_shop_filter_settings.sql", "202611190004_product_galleries_and_gem_types.sql"]) {
+for (const name of ["202611180001_catalogue.sql", "202611180002_checkout.sql", "202611190001_inventory_management.sql", "202611190002_product_photos_and_category_visibility.sql", "202611190003_shop_filter_settings.sql", "202611190004_product_galleries_and_gem_types.sql", "202611190005_request_limits.sql"]) {
   await db.exec(await readFile(new URL("../../supabase/migrations/" + name, import.meta.url), "utf8"))
 }
 await db.query("insert into auth.users values ($1), ($2);", [admin, visitor])
@@ -34,10 +34,11 @@ await db.query(`
 
 const json = (value) => Buffer.from(JSON.stringify(value)).toString("base64url")
 function token(id) {
-  return json({ alg: "HS256", typ: "JWT" }) + "." + json({ sub: id, role: "authenticated", exp: 4102444800 }) + ".Zml4dHVyZQ"
+  return json({ alg: "HS256", typ: "JWT" }) + "." + json({ sub: id, email: user(id).email, role: "authenticated", aal: "aal1", exp: 4102444800 }) + ".Zml4dHVyZQ"
 }
 function user(id) {
-  return { id, email: emailPrefix + (id === admin ? "-admin" : "-visitor") + "@example.test", aud: "authenticated", role: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" }
+  return { id, email: emailPrefix + (id === admin ? "-admin" : "-visitor") + "@example.test", aud: "authenticated", role: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "2026-01-01T00:00:00Z",
+    factors: [] }
 }
 
 function one(rows) {
@@ -53,7 +54,9 @@ async function rest(table, method, url, input, privileged) {
     if (photo && privileged) return (await db.query("select id from public.products where image_url = $1", [photo])).rows
     const status = url.searchParams.get("status")?.slice(3) ?? null
     const query = "select * from public.products where archived_at is null and ($1::text is null or status = $1)"
-    return (await db.query(query + (privileged ? "" : " and is_published and exists (select 1 from public.gem_categories c where c.slug = gem_type and c.is_visible)") + " order by name", [status])).rows
+    const slug = url.searchParams.get("slug")?.slice(3) ?? null
+    const limit = Number(url.searchParams.get("limit") ?? 500)
+    return (await db.query(query + (privileged ? "" : " and is_published and exists (select 1 from public.gem_categories c where c.slug = gem_type and c.is_visible)") + " and ($2::text is null or slug=$2) order by name limit $3", [status,slug,limit])).rows
   }
   if (table === "gem_categories" && method === "GET") {
     return (await db.query("select * from public.gem_categories where $1 or is_visible order by name", [privileged])).rows
@@ -80,6 +83,9 @@ async function rest(table, method, url, input, privileged) {
   }
   if (table === "rpc/consume_rate_limit") {
     return (await db.query("select public.consume_rate_limit($1,$2,$3) as allowed", [input.p_key, input.p_max, input.p_seconds])).rows[0].allowed
+  }
+  if (table === "rpc/permit_store_request") {
+    return (await db.query("select public.permit_store_request($1,$2,$3) as allowed", [input.p_source, input.p_identity, input.p_source_max])).rows[0].allowed
   }
   if (table === "rpc/reserve_checkout") {
     return (await db.query("select public.reserve_checkout($1,$2,$3,$4) as order_data", [input.p_ids, input.p_customer, input.p_shipping, input.p_token])).rows[0].order_data
@@ -154,8 +160,12 @@ const server = createServer(async (request, response) => {
       if (!id || input.password !== fixturePassword) return send(400, { message: "Invalid credentials" })
       return send(200, { access_token: token(id), token_type: "bearer", expires_in: 3600, refresh_token: id, user: user(id) })
     }
+    const id = [admin, visitor].find(id => request.headers.authorization === "Bearer " + token(id))
     if (url.pathname === "/auth/v1/user") {
-      const id = [admin, visitor].find((id) => request.headers.authorization === "Bearer " + token(id))
+      if (request.method === "PUT") {
+        if (id !== admin || input.current_password !== fixturePassword) return send(403, { message: "Current password required" })
+        fixturePassword = input.password
+      }
       return id ? send(200, user(id)) : send(401, { message: "Unauthorized" })
     }
     if (url.pathname === "/auth/v1/logout") return send(200, {})

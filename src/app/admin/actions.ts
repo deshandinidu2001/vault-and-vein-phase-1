@@ -42,7 +42,7 @@ export async function signIn(form: FormData) {
     if (user) await session.auth.signOut({ scope: "local" })
     redirect("/admin/login?result=denied")
   }
-  redirect("/admin/verify")
+  redirect("/admin")
 }
 
 export async function signOut() {

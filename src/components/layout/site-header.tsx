@@ -1,11 +1,10 @@
 "use client"
 
 import Image from "next/image"
-import Link from "next/link"
+import { NavigationLink } from "./navigation-link"
 import { usePathname } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { ArrowUpRight, Menu, ShoppingBag } from "lucide-react"
-import { motion, useReducedMotion } from "framer-motion"
 import { useCart } from "@/store/cart"
 import { navigation } from "@/config/site"
 import { useUi, restoreOverlayFocus } from "@/store/ui"
@@ -21,7 +20,6 @@ export function BrandBadge({ size = 40 }: { size?: number }) {
 export function SiteHeader() {
   const count = useCart((state) => state.items.length)
   const path = usePathname()
-  const reduced = useReducedMotion()
   const { overlay, openMenu, openCart, closeOverlay, currency, toggleCurrency } = useUi()
   const [compact, setCompact] = useState(false)
   const progress = useRef<HTMLDivElement>(null)
@@ -47,11 +45,11 @@ export function SiteHeader() {
     <a href="#main" className="fixed left-4 top-4 z-[70] -translate-y-24 rounded-full bg-cream px-4 py-3 text-deep focus:translate-y-0">Skip to content</a>
     <header className="site-header" data-compact={compact}>
       <div className="header-row">
-        <Link href="/" className="brand" aria-label="Vault & Vein home" translate="no">
+        <NavigationLink href="/" className="brand" aria-label="Vault & Vein home" translate="no">
           <BrandBadge size={33} /><span>VAULT &amp; VEIN</span>
-        </Link>
+        </NavigationLink>
         <nav className="desktop-nav" aria-label="Main navigation">
-          {navigation.map(({ href, label }) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined}>{label}</Link>)}
+          {navigation.map(({ href, label }) => <NavigationLink key={href} href={href} aria-current={active(href) ? "page" : undefined}>{label}</NavigationLink>)}
         </nav>
         <div className="header-actions">
           <EnquireButton className="header-enquiry pill-primary">
@@ -73,9 +71,9 @@ export function SiteHeader() {
         <SheetTitle className="pl-3 pt-1 font-display text-2xl">Menu</SheetTitle>
         <SheetDescription className="sr-only">Navigate Vault &amp; Vein.</SheetDescription>
         <nav className="grid gap-1" aria-label="Mobile navigation">
-          {navigation.map(({ href, label }, index) => <motion.div key={href} initial={reduced ? false : { opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduced ? 0 : .45, delay: reduced ? 0 : .065 * index }}>
-            <Link href={href} onClick={closeOverlay} aria-current={active(href) ? "page" : undefined} className="mobile-nav-link">{label}</Link>
-          </motion.div>)}
+          {navigation.map(({ href, label }, index) =>
+            <NavigationLink key={href} href={href} onClick={closeOverlay} style={{ animationDelay: index * 65 + "ms" }}
+              aria-current={active(href) ? "page" : undefined} className="mobile-nav-link">{label}</NavigationLink>)}
         </nav>
         <EnquireButton className="pill-primary">
           Enquire <ArrowUpRight size={16} aria-hidden="true" />

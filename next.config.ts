@@ -2,6 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  images: { localPatterns: [
+    { pathname: "/brand/**", search: "" },
+    { pathname: "/images/hero/**", search: "" },
+    { pathname: "/images/editorial/**", search: "" },
+  ] },
   distDir: process.env.VAULT_VEIN_BROWSER_FIXTURE === "1" ? ".next-fixture" : ".next",
   experimental: { serverActions: { bodySizeLimit: "4mb" } },
   async headers() {
@@ -20,6 +25,8 @@ const nextConfig: NextConfig = {
         { key: "X-Frame-Options", value: "DENY" },
         { key: "X-Content-Type-Options", value: "nosniff" },
         { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ...(process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_SITE_URL?.startsWith("https://")
+          ? [{ key: "Strict-Transport-Security", value: "max-age=31536000" }] : []),
       ] },
       ...["/admin/:path*", "/order/:path*", "/api/:path*"].map(source => ({ source, headers: [
         { key: "Cache-Control", value: "private, no-store" },

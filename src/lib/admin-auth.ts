@@ -28,17 +28,17 @@ export async function hasAdminAccess(userId: string) {
   return !error && Boolean(data)
 }
 
-// All privileged pages and mutations share this check. The verification page
-// uses the same identity and allowlist check before it can issue a challenge.
+// All privileged pages and mutations check the authenticated user against the admin allowlist.
 export const adminIdentity = cache(async () => {
   if (!backendConfigured) redirect("/admin/login")
   const session = await adminSession()
-  const { data, error } = await session.auth.getClaims()
-  if (error || !data?.claims.sub || !await hasAdminAccess(data.claims.sub)) redirect("/admin/login")
-  return { session, id: data.claims.sub, email: data.claims.email, verified: data.claims.aal === "aal2" }
+  const { data: { user }, error } = await session.auth.getUser()
+  if (error || !user) redirect("/admin/login")
+  if (!await hasAdminAccess(user.id)) redirect("/admin/login")
+  return { session, id: user.id, email: user.email }
 })
 
 export async function requireAdminDatabase() {
-  if (!(await adminIdentity()).verified) redirect("/admin/verify")
+  await adminIdentity()
   return serviceDatabase()
 }

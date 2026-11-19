@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { adminIdentity, requireAdminDatabase } from "@/lib/admin-auth"
+import { adminIdentity } from "@/lib/admin-auth"
 import { changePassword } from "./security-actions"
 
 const messages = {
@@ -10,7 +10,6 @@ const messages = {
 }
 
 export default async function AccountPage({ searchParams }: PageProps<"/admin/account">) {
-  await requireAdminDatabase()
   const { email } = await adminIdentity()
   const { result } = await searchParams
   const message = typeof result === "string" && Object.hasOwn(messages, result) ? messages[result as keyof typeof messages] : null
