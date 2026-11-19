@@ -6,10 +6,10 @@ export const site = {
   description: "Discover fine cut and polished gemstones through a collection inspired by Sri Lankan gemstone heritage.",
   url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
   country: "Sri Lanka",
-  mapEmbedUrl: "https://maps.google.com/maps?q=Sri%20Lanka&z=7&output=embed",
-  email: "",
+  email: "vaultvein@gmail.com",
+  mobile: "+94700000000",
   whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "",
-  businessHours: "",
+  businessHours: "Every day, 8:00 AM to 5:00 PM (Sri Lanka time)",
   returnWindowDays: null as number | null,
   shippingNote: "Ask about delivery to your destination, available insurance and the full shipping cost before placing an order.",
   replyTime: "We reply within one business day.",
@@ -70,7 +70,7 @@ export const policies = {
     summary: "Your shortlist is stored in your browser so you can resume it later.",
     sections: [
       { heading: "Messages and checkout", body: "We use the contact and shipping details you submit to respond to enquiries and process orders. PayHere handles payment details on its hosted checkout." },
-      { heading: "External services", body: "The contact map is provided by Google Maps. If you follow an external link or use its services, that provider’s privacy terms apply." },
+      { heading: "External services", body: "When you use an external service such as WhatsApp or PayHere, that service’s privacy terms apply." },
     ],
   },
   terms: {

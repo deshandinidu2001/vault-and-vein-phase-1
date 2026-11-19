@@ -99,7 +99,7 @@
   background: #f6f1e7;
 }
 
-.home-content .wrap, .site-footer .wrap {
+.home-content .wrap, .wrap-editorial, .site-footer .wrap {
   width: min(var(--editorial-width), calc(100% - var(--content-edge) * 2));
 }
 

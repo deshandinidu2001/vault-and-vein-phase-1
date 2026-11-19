@@ -87,10 +87,7 @@ function EnquiryForm({ stones }: { stones: EnquiryStone[] }) {
     </div>
     <button className="pill pill-primary" type="submit" disabled={isSubmitting}>{isSubmitting ? "Submitting…" : "Submit enquiry"}</button>
     {errors.root?.message && <p role="alert" className="text-sm text-destructive">{errors.root.message}</p>}
-    {whatsapp
-      ? <a className="pill" href={whatsapp} target="_blank" rel="noreferrer">Chat on WhatsApp</a>
-      : <button className="pill" type="button" disabled aria-describedby="enquiry-whatsapp-note">Chat on WhatsApp</button>}
-    {!whatsapp && <p className="text-sm text-muted-foreground" id="enquiry-whatsapp-note">WhatsApp contact details are coming soon.</p>}
+    {whatsapp && <a className="pill" href={whatsapp} target="_blank" rel="noreferrer">Chat on WhatsApp</a>}
   </form>
 }
 

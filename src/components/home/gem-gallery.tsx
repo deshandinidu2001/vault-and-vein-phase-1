@@ -75,7 +75,7 @@ export function GemGallery({ stones, categoryLabels }: { stones: Stone[]; catego
                   label={(item.image_url ? "Photo of " : "Illustration of ") + item.name} />
               </div>
               <div className="grid content-start gap-2 pt-4">
-                <p className="eyebrow">{stoneCategory(item)}</p>
+                <p className="eyebrow">{stoneCategory(item)}{item.is_sample && " / Sample stone"}</p>
                 <h3 className="text-[clamp(1.6rem,2.5vw,2.2rem)]">{item.name}</h3>
                 <p className="text-sm text-cream/80">{item.cut} <span aria-hidden="true">·</span> {item.carat} ct <span aria-hidden="true">·</span> {item.colour}</p>
                 <button className="line-link gallery-open w-fit text-sm" type="button" aria-label={"Open this stone: " + item.name} aria-haspopup="dialog" onClick={(event) => {

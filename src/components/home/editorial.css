@@ -182,7 +182,7 @@
   transition: border-color .25s;
 }
 
-.gallery-card .stone-art img { padding: 8%; }
+.gallery-card .stone-art img.gem-illustration { padding: 8%; }
 .gallery-card:hover .stone-art, .gallery-card:focus-within .stone-art { border-color: #c9a24b; }
 .gallery-card:hover .stone-art img, .gallery-card:focus-within .stone-art img { scale: 1.06; }
 .gallery-open::after { position: absolute; inset: 0; border-radius: 1rem; content: ""; }

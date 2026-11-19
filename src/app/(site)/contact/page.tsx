@@ -6,11 +6,11 @@ export const metadata = pageMetadata("Contact", "Ask Vault & Vein about a stone,
 
 export default function Contact() {
   const whatsapp = whatsappLink("Hello Vault & Vein, I have a question.")
-  return <div className="wrap section page-top-compact space-y-8 lg:space-y-10">
+  return <div className="wrap wrap-editorial section page-top-compact space-y-8 lg:space-y-10">
     <div className="space-y-4">
       <p className="eyebrow text-[#785520]">Contact</p>
       <h1>Let’s talk stones.</h1>
-      <p>Tell us about the stone you have in mind, a setting you’re planning or a detail you’d like us to clarify.</p>
+      <p className="max-w-[65ch]">Tell us about the stone you have in mind, a setting you’re planning or a detail you’d like us to clarify.</p>
     </div>
     <div className="film-grid items-start!">
       <section className="space-y-6 rounded-2xl border border-emerald/15 p-5 md:p-8" aria-labelledby="message-title">
@@ -19,17 +19,25 @@ export default function Contact() {
       </section>
       <section className="grid gap-5" aria-labelledby="contact-details">
         <h2 id="contact-details" className="text-4xl">Contact details</h2>
-        <dl className="grid gap-3">
-          <div><dt className="font-semibold">Email</dt><dd>{site.email ? <a className="line-link" href={"mailto:" + site.email}>{site.email}</a> : "Email address to be announced."}</dd></div>
-          <div><dt className="font-semibold">Business hours</dt><dd>{site.businessHours || "Hours to be announced."}</dd></div>
+        <dl className="grid divide-y divide-emerald/15 rounded-2xl border border-emerald/15 bg-[#fbf8ef] px-5 md:px-6">
+          <div className="grid items-center gap-1 py-4 sm:grid-cols-[8rem_1fr]">
+            <dt className="font-semibold">Email</dt>
+            <dd><a className="line-link" href={"mailto:" + site.email}>{site.email}</a></dd>
+          </div>
+          <div className="grid items-center gap-1 py-4 sm:grid-cols-[8rem_1fr]">
+            <dt className="font-semibold">Mobile</dt>
+            <dd><a className="line-link" href={"tel:" + site.mobile}>{site.mobile}</a></dd>
+          </div>
+          <div className="grid gap-1 py-4 sm:grid-cols-[8rem_1fr]">
+            <dt className="font-semibold">Business hours</dt>
+            <dd>{site.businessHours}</dd>
+          </div>
+          <div className="grid gap-1 py-4 sm:grid-cols-[8rem_1fr]">
+            <dt className="font-semibold">Country</dt>
+            <dd>{site.country}</dd>
+          </div>
         </dl>
-        {whatsapp
-          ? <a className="pill w-fit" href={whatsapp} target="_blank" rel="noreferrer">Chat on WhatsApp</a>
-          : <button className="pill w-fit" type="button" disabled>Chat on WhatsApp</button>}
-        <figure className="space-y-2">
-          <iframe src={site.mapEmbedUrl} title={"Map of " + site.country} loading="lazy" referrerPolicy="no-referrer" className="aspect-[4/3] w-full rounded-2xl border border-emerald/15" />
-          <figcaption className="text-sm text-muted-foreground">Our roots are in Sri Lanka. The map shows the country.</figcaption>
-        </figure>
+        {whatsapp && <a className="pill w-fit" href={whatsapp} target="_blank" rel="noreferrer">Chat on WhatsApp</a>}
       </section>
     </div>
   </div>
