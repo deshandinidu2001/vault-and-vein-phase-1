@@ -131,7 +131,7 @@ export function GemGallery({ stones, categoryLabels }: { stones: Stone[]; catego
                     setSelected(null)
                     openEnquiry([stone])
                     useUi.setState({ returnFocus: openingButton.current })
-                  }}>Enquire</button>
+                  }}>Ask about this stone</button>
                 </div>
               </div>
             </div>

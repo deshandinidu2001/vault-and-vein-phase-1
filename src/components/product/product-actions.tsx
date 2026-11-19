@@ -22,12 +22,12 @@ export function ProductActions({ stone, paymentsEnabled }: { stone: Stone; payme
         {alreadyInCart ? <Check size={18} aria-hidden="true" /> : <ShoppingBag size={18} aria-hidden="true" />}
         {alreadyInCart ? "In your cart" : stone.status === "available" ? "Add to Cart" : "Unavailable"}
       </button>
-      <EnquireButton stones={[stone]}>Enquire</EnquireButton>
+      <EnquireButton stones={[stone]}>Ask about this stone</EnquireButton>
     </div>
     {stone.status === "available" && stone.is_sample === false && (
       <section className="grid gap-3 rounded-xl border border-emerald/15 bg-[#e8ebe0] p-4 sm:p-5" aria-labelledby="product-checkout-title">
         <h2 id="product-checkout-title" className="flex items-center gap-2 font-sans text-base font-semibold"><CreditCard size={18} aria-hidden="true" /> Online checkout</h2>
-        <p className="text-sm text-muted-foreground">{canBuy ? "Review delivery and pay in LKR through PayHere." : "Online payment is currently unavailable. Enquire to discuss this stone."}</p>
+        <p className="text-sm text-muted-foreground">{canBuy ? "Review delivery and pay in LKR through PayHere." : "Online payment is currently unavailable. Ask us about this stone."}</p>
         <button type="button" className="pill pill-primary w-fit" disabled={!canBuy} onClick={() => {
           add(stone)
           router.push("/checkout?" + new URLSearchParams({ item: stone.id }))

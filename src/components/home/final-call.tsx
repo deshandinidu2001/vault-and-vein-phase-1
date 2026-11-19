@@ -17,7 +17,7 @@ export function FinalCall() {
           <p>Start with a colour you love, a setting you have in mind or a budget you’d like to work within. We can help you narrow down the possibilities.</p>
           <div className="closing-action">
             <EnquireButton className="pill-primary closing-enquiry">
-              Enquire about a stone
+              Ask about a stone
               <span className="action-disc"><ArrowUpRight size={18} aria-hidden="true" /></span>
             </EnquireButton>
             <p>{site.replyTime}</p>

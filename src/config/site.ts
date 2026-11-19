@@ -36,7 +36,7 @@ export const returnNote = site.returnWindowDays === null
   : "The return window is " + site.returnWindowDays + " days. Ask us to confirm eligibility and return shipping before ordering."
 
 export const faq = [
-  { question: "How do I buy a stone?", answer: "Add an available stone to your cart. If checkout is available, you can pay in LKR through PayHere for delivery within Sri Lanka. You can also enquire about a stone or your shortlist." },
+  { question: "How do I buy a stone?", answer: "Add an available stone to your cart. If checkout is available, you can pay in LKR through PayHere for delivery within Sri Lanka. You can also ask us about a stone or your shortlist." },
   { question: "Are the stones certified?", answer: "We indicate when a lab report is available. Ask to see the report for the individual stone and review its findings before deciding." },
   { question: "How do shipping and insurance work?", answer: site.shippingNote },
   { question: "What is the returns policy?", answer: returnNote },
@@ -69,7 +69,7 @@ export const policies = {
     title: "Privacy",
     summary: "Your shortlist is stored in your browser so you can resume it later.",
     sections: [
-      { heading: "Messages and checkout", body: "We use the contact and shipping details you submit to respond to enquiries and process orders. PayHere handles payment details on its hosted checkout." },
+      { heading: "Messages and checkout", body: "We use the contact and shipping details you submit to answer questions and process orders. PayHere handles payment details on its hosted checkout." },
       { heading: "External services", body: "When you use an external service such as WhatsApp or PayHere, that service’s privacy terms apply." },
     ],
   },
@@ -78,7 +78,7 @@ export const policies = {
     summary: "Review the price, availability and individual stone details before ordering.",
     sections: [
       { heading: "Illustrative listings", body: "Listings marked as samples are for browsing. Images and 3D models illustrate the cut and colour family." },
-      { heading: "Enquiries and purchases", body: "If checkout is available, the order status page confirms when PayHere has verified payment. Before paying, confirm delivery and return terms for your order." },
+      { heading: "Questions and purchases", body: "If checkout is available, the order status page confirms when PayHere has verified payment. Before paying, confirm delivery and return terms for your order." },
     ],
   },
 } as const

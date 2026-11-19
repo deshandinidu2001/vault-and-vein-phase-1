@@ -38,12 +38,12 @@ function EnquiryForm({ stones }: { stones: EnquiryStone[] }) {
   const { errors, isSubmitting } = form.formState
   const whatsapp = whatsappLink(stones.length
     ? "Hello Vault & Vein, I’m interested in " + stones.map((stone) => stone.name).join(", ") + "."
-    : "Hello Vault & Vein, I’d like to enquire about a gemstone.")
+    : "Hello Vault & Vein, I’d like to ask about a gemstone.")
 
   async function submit(values: Values) {
     try {
       const preview = await sendMessage("enquiry", { ...values, stones: stones.map(({ slug }) => slug) })
-      toast.success(preview ? "Preview complete. Your enquiry was not sent." : "Your enquiry was received.")
+      toast.success(preview ? "Preview complete. Your question was not sent." : "We received your question.")
       form.reset()
     } catch (error) {
       form.setError("root", { message: error instanceof Error ? error.message : "Please try again." })
@@ -65,7 +65,7 @@ function EnquiryForm({ stones }: { stones: EnquiryStone[] }) {
 
   return <form noValidate autoComplete="off" onSubmit={form.handleSubmit(submit)} className="grid gap-5 px-6 pb-8">
     {stones.length > 0 && <div className="rounded-xl bg-muted p-4">
-      <p className="font-semibold">Stones in your enquiry</p>
+      <p className="font-semibold">Selected stones</p>
       <ul className="mt-2 list-disc pl-5">{stones.map(({ slug, name }) => <li key={slug}>{name}</li>)}</ul>
     </div>}
     {inputs.slice(0, 3).map(renderInput)}
@@ -85,7 +85,7 @@ function EnquiryForm({ stones }: { stones: EnquiryStone[] }) {
       <Textarea id="enquiry-notes" rows={4} aria-invalid={!!errors.notes} aria-describedby={errors.notes ? "enquiry-notes-error" : undefined} {...form.register("notes")} />
       {fieldError("notes")}
     </div>
-    <button className="pill pill-primary" type="submit" disabled={isSubmitting}>{isSubmitting ? "Submitting…" : "Submit enquiry"}</button>
+    <button className="pill pill-primary" type="submit" disabled={isSubmitting}>{isSubmitting ? "Sending…" : "Send question"}</button>
     {errors.root?.message && <p role="alert" className="text-sm text-destructive">{errors.root.message}</p>}
     {whatsapp && <a className="pill" href={whatsapp} target="_blank" rel="noreferrer">Chat on WhatsApp</a>}
   </form>
@@ -102,7 +102,7 @@ export function EnquirySheet() {
         }
       }} onCloseAutoFocus={restoreOverlayFocus} className="overlay-scroll max-h-[92dvh] overflow-y-auto md:max-h-dvh md:w-[29rem]! md:max-w-none!">
       <SheetHeader className="p-6 pt-12">
-        <SheetTitle id="enquiry-title" tabIndex={-1} className="font-display text-4xl">Enquire about a stone</SheetTitle>
+        <SheetTitle id="enquiry-title" tabIndex={-1} className="font-display text-4xl">Ask about a stone</SheetTitle>
         <SheetDescription>{site.replyTime}</SheetDescription>
       </SheetHeader>
       <EnquiryForm key={enquiry.map(({ slug }) => slug).join(",")} stones={enquiry} />

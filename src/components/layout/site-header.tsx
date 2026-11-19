@@ -53,7 +53,7 @@ export function SiteHeader() {
         </nav>
         <div className="header-actions">
           <EnquireButton className="header-enquiry pill-primary">
-            Enquire
+            Ask
             <span className="action-disc"><ArrowUpRight size={16} aria-hidden="true" /></span>
           </EnquireButton>
           <button className="icon-button relative" aria-label={"Open cart, " + count + " stones"} onClick={openCart} type="button">
@@ -76,7 +76,7 @@ export function SiteHeader() {
               aria-current={active(href) ? "page" : undefined} className="mobile-nav-link">{label}</NavigationLink>)}
         </nav>
         <EnquireButton className="pill-primary">
-          Enquire <ArrowUpRight size={16} aria-hidden="true" />
+          Ask <ArrowUpRight size={16} aria-hidden="true" />
         </EnquireButton>
       </SheetContent>
     </Sheet>

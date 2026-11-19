@@ -97,7 +97,7 @@ export function SiteFooter({ shopLinks }: { shopLinks: { href: string; label: st
             <p className="mt-3 text-sm text-cream/80">Inspired by Sri Lankan gemstone heritage</p>
           </div>
           <EnquireButton className="footer-enquiry pill-gold">
-            Enquire about a stone
+            Ask about a stone
             <span className="action-disc"><ArrowUpRight size={20} aria-hidden="true" /></span>
           </EnquireButton>
         </div>

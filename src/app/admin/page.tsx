@@ -173,7 +173,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
           </li>
 
           return <li key={row.id} className={card}>
-            <h3 className="text-3xl capitalize">{row.kind}{row.read_at ? "" : " · Unread"}</h3>
+            <h3 className="text-3xl">{row.kind === "enquiry" ? "Stone question" : "Contact"}{row.read_at ? "" : " · Unread"}</h3>
             <p>{date.format(new Date(row.created_at))}</p>
             <Details record={row.payload} labels={{ name: "Name", email: "Email", subject: "Subject", message: "Message", mobile: "Mobile", gem: "Gem", budget: "Budget", colour: "Colour", size: "Size", notes: "Notes", stones: "Stones" }} />
             {!row.read_at && <form action={readMessage.bind(null, row.id)}>

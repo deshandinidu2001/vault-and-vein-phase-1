@@ -82,7 +82,7 @@ export function HeroSlider() {
                 Explore the Collection <span className="action-disc"><ArrowUpRight size={18} aria-hidden="true" /></span>
               </Link>
               <EnquireButton className="hero-secondary">
-                Enquire about a stone <span className="action-disc"><ArrowRight size={18} aria-hidden="true" /></span>
+                Ask about a stone <span className="action-disc"><ArrowRight size={18} aria-hidden="true" /></span>
               </EnquireButton>
             </div>
           </div>

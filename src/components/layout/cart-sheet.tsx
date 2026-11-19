@@ -46,11 +46,11 @@ export function CartSheet({ paymentsEnabled }: { paymentsEnabled: boolean }) {
             </li>)}
           </ul>
           <div className="flex flex-wrap justify-between gap-2 font-semibold"><span>{!payable.length ? "Sample total" : "Stone subtotal"}</span><StonePrice lkr={total} /></div>
-          {hasSamples && payable.length > 0 && <p className="text-sm text-muted-foreground">Sample stones are available by enquiry.</p>}
+          {hasSamples && payable.length > 0 && <p className="text-sm text-muted-foreground">You can ask us about the sample stones in your cart.</p>}
           <section className="grid gap-3 rounded-xl border border-emerald/15 bg-[#e8ebe0] p-4" aria-labelledby="cart-checkout-title">
             <h2 id="cart-checkout-title" className="flex items-center gap-2 font-sans text-base font-semibold"><CreditCard size={18} aria-hidden="true" /> Online checkout</h2>
             <p className="text-sm text-muted-foreground">
-              {!payable.length ? "Sample stones are available by enquiry."
+              {!payable.length ? "You can ask us about the sample stones in your cart."
                 : !paymentsEnabled ? "Online payment is currently unavailable."
                   : payable.length > 12 ? "Pay for a single stone or reduce the cart to 12 payable stones."
                     : "Review delivery and pay in LKR through PayHere."}
@@ -59,7 +59,7 @@ export function CartSheet({ paymentsEnabled }: { paymentsEnabled: boolean }) {
               ? <Link href="/checkout" className="pill pill-primary" onClick={closeOverlay}>Go to checkout</Link>
               : <button type="button" className="pill pill-primary" disabled>Go to checkout</button>}
           </section>
-          <button type="button" className="pill" onClick={() => openEnquiry(items)}>Request these stones</button>
+          <button type="button" className="pill" onClick={() => openEnquiry(items)}>{items.length === 1 ? "Ask about this stone" : "Ask about these stones"}</button>
         </div>}
       </SheetContent>
     </Sheet>

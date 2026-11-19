@@ -71,7 +71,7 @@ export function CheckoutForm({ shipping, sandbox, itemId }: { shipping: number; 
 
   if (!items.length || items.length > 12) {
     return <div className="mt-6 space-y-5">
-      <p>Choose up to 12 available catalogue stones for checkout. You can enquire about sample stones from your cart.</p>
+      <p>Choose up to 12 available catalogue stones for checkout. You can ask about sample stones from your cart.</p>
       <Link className="pill pill-primary" href="/shop">Back to the shop</Link>
     </div>
   }

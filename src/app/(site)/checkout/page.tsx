@@ -13,7 +13,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
     <h1 className="mt-4">Checkout</h1>
     {config ? <CheckoutForm key={itemId ?? "cart"} itemId={itemId} shipping={config.shipping} sandbox={config.mode === "sandbox"} /> : (
       <div className="mt-6 space-y-5">
-        <p>Online payment is currently unavailable. Enquire about your shortlist to discuss a stone.</p>
+        <p>Online payment is currently unavailable. You can ask us about the stones in your cart.</p>
         <Link className="pill pill-primary" href="/shop">Back to the shop</Link>
       </div>
     )}
