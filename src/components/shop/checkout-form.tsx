@@ -19,8 +19,9 @@ const details = [
   { name: "city", label: "City", autoComplete: "address-level2", maxLength: 100 },
 ]
 
-export function CheckoutForm({ shipping, sandbox }: { shipping: number; sandbox: boolean }) {
-  const items = useCart((state) => state.items)
+export function CheckoutForm({ shipping, sandbox, itemId }: { shipping: number; sandbox: boolean; itemId?: string }) {
+  const cart = useCart((state) => state.items)
+  const items = cart.filter(({ id, is_sample }) => is_sample === false && (itemId === undefined || id === itemId))
   const [prepared, setPrepared] = useState<Prepared>()
   const [error, setError] = useState("")
   const [busy, setBusy] = useState(false)
@@ -68,7 +69,7 @@ export function CheckoutForm({ shipping, sandbox }: { shipping: number; sandbox:
     </div>
   }
 
-  if (!items.length || items.some(({ is_sample }) => is_sample !== false) || items.length > 12) {
+  if (!items.length || items.length > 12) {
     return <div className="mt-6 space-y-5">
       <p>Choose up to 12 available catalogue stones for checkout. You can enquire about sample stones from your cart.</p>
       <Link className="pill pill-primary" href="/shop">Back to the shop</Link>

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Trash2 } from "lucide-react"
+import { ArrowUpRight, Trash2 } from "lucide-react"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { GemArt } from "@/components/three/gem-art"
 import { StonePrice } from "@/components/shop/stone-price"
@@ -12,8 +12,9 @@ export function CartSheet({ paymentsEnabled }: { paymentsEnabled: boolean }) {
   const { overlay, closeOverlay, openEnquiry } = useUi()
   const { items, remove } = useCart()
   const total = items.reduce((sum, item) => sum + item.price_lkr, 0)
-  const hasSamples = items.some(({ is_sample }) => is_sample !== false)
-  const canCheckout = paymentsEnabled && !hasSamples && items.length > 0 && items.length <= 12
+  const payable = items.filter(({ is_sample }) => is_sample === false)
+  const hasSamples = payable.length !== items.length
+  const canCheckout = paymentsEnabled && payable.length > 0 && payable.length <= 12
 
   return (
     <Sheet open={overlay === "cart"} onOpenChange={(open) => { if (!open && useUi.getState().overlay === "cart") closeOverlay() }}>
@@ -34,13 +35,20 @@ export function CartSheet({ paymentsEnabled }: { paymentsEnabled: boolean }) {
               <div className="min-w-0">
                 <Link href={"/shop/" + item.slug} onClick={closeOverlay} className="flex min-h-11 items-center font-semibold hover:underline">{item.name}</Link>
                 <p className="text-sm text-muted-foreground">{item.carat} ct · <StonePrice lkr={item.price_lkr} /></p>
+                {item.is_sample === false && items.length > 1 && paymentsEnabled && (
+                  <Link href={{ pathname: "/checkout", query: { item: item.id } }} onClick={closeOverlay}
+                    className="line-link text-sm" aria-label={"Pay for this stone: " + item.name}>Pay for this stone <ArrowUpRight size={15} aria-hidden="true" /></Link>
+                )}
               </div>
               <button type="button" className="icon-button size-11!" aria-label={"Remove " + item.name} onClick={() => remove(item.id)}>
                 <Trash2 size={17} aria-hidden="true" />
               </button>
             </li>)}
           </ul>
-          <div className="flex flex-wrap justify-between gap-2 font-semibold"><span>{hasSamples ? "Sample total" : "Stone subtotal"}</span><StonePrice lkr={total} /></div>
+          <div className="flex flex-wrap justify-between gap-2 font-semibold"><span>{!payable.length ? "Sample total" : "Stone subtotal"}</span><StonePrice lkr={total} /></div>
+          {hasSamples && payable.length > 0 && <p className="text-sm text-muted-foreground">Sample stones are available by enquiry. Checkout includes the other stones.</p>}
+          {payable.length > 0 && !paymentsEnabled && <p className="text-sm text-muted-foreground">Online payment is currently unavailable. You can enquire about these stones.</p>}
+          {paymentsEnabled && payable.length > 12 && <p className="text-sm text-muted-foreground">Pay for a single stone or reduce the cart to 12 payable stones.</p>}
           {canCheckout && <Link href="/checkout" className="pill pill-primary" onClick={closeOverlay}>Go to checkout</Link>}
           <button type="button" className={canCheckout ? "pill" : "pill pill-primary"} onClick={() => openEnquiry(items)}>Request these stones</button>
         </div>}

@@ -40,6 +40,7 @@ export function SiteFooter() {
         const fillDistance = Math.max(1, Math.min(112, availableScroll - leadIn))
         const atEnd = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2
         const progress = atEnd ? 1 : (distanceAfterReveal - leadIn) / fillDistance
+        mark.toggleAttribute("data-fill-active", progress > 0)
         mark.style.setProperty("--footer-fill", (gsap.utils.clamp(0, 1, progress) * 100).toFixed(2) + "%")
       }
 
@@ -51,11 +52,19 @@ export function SiteFooter() {
           updateFill()
         })
       }
-      const resize = new ResizeObserver(scheduleFill)
+      const updateLayout = () => {
+        const headerHeight = document.querySelector(".site-header")?.getBoundingClientRect().height ?? 0
+        // A tall footer stays in the document flow so all its links can scroll into view.
+        element.toggleAttribute("data-reveal-sticky", element.offsetHeight <= window.innerHeight - headerHeight - 16)
+        scheduleFill()
+      }
+      const resize = new ResizeObserver(updateLayout)
       resize.observe(surface)
       resize.observe(mark)
+      resize.observe(element)
       window.addEventListener("scroll", scheduleFill, { passive: true })
-      window.addEventListener("resize", scheduleFill)
+      window.addEventListener("resize", updateLayout)
+      updateLayout()
       updateFill()
 
       gsap.from("[data-footer-rise]", {
@@ -74,8 +83,10 @@ export function SiteFooter() {
       return () => {
         resize.disconnect()
         window.removeEventListener("scroll", scheduleFill)
-        window.removeEventListener("resize", scheduleFill)
+        window.removeEventListener("resize", updateLayout)
         cancelAnimationFrame(frame)
+        element.removeAttribute("data-reveal-sticky")
+        mark.removeAttribute("data-fill-active")
         mark.style.removeProperty("--footer-fill")
       }
     })

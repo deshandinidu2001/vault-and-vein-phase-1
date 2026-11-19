@@ -135,8 +135,9 @@
 }
 .footer-bottom { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; column-gap: 1rem; border-top: 1px solid #f6f1e733; padding-top: .65rem; color: #f6f1e7cc; font-size: .875rem; }
 
-@media (min-width: 768px) and (min-height: 800px) and (prefers-reduced-motion: no-preference) {
-  .site-footer { position: sticky; bottom: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .site-footer[data-reveal-sticky] { position: sticky; bottom: 0; }
+  .footer-wordmark[data-fill-active] .footer-wordmark-fill { transition: clip-path 1.15s var(--easing); }
 }
 
 @media (min-width: 640px) {

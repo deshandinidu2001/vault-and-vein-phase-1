@@ -41,8 +41,11 @@ export function HeroSlider() {
 
   useEffect(() => {
     if (reduced || !visible || hovered || focused || manuallySelected) return
+    const canHover = window.matchMedia("(any-hover: hover)")
     const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") setCurrent((index) => (index + 1) % total)
+      if (document.visibilityState === "visible" && !(canHover.matches && panel.current?.matches(":hover"))) {
+        setCurrent((index) => (index + 1) % total)
+      }
     }, 1500)
     return () => window.clearInterval(timer)
   }, [reduced, visible, hovered, focused, manuallySelected, total])
@@ -63,8 +66,8 @@ export function HeroSlider() {
   return (
     <section className="home-masthead" aria-labelledby="hero-title">
       <div ref={panel} className="hero-panel"
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+        onPointerEnter={(event) => { if (event.pointerType === "mouse") setHovered(true) }}
+        onPointerLeave={(event) => { if (event.pointerType === "mouse") setHovered(false) }}
         onFocusCapture={() => setFocused(true)}
         onBlurCapture={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false)

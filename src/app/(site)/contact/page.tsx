@@ -6,8 +6,8 @@ export const metadata = pageMetadata("Contact", "Ask Vault & Vein about a stone,
 
 export default function Contact() {
   const whatsapp = whatsappLink("Hello Vault & Vein, I have a question.")
-  return <div className="wrap section page-top space-y-12">
-    <div className="space-y-5">
+  return <div className="wrap section page-top-compact space-y-8 lg:space-y-10">
+    <div className="space-y-4">
       <p className="eyebrow text-[#785520]">Contact</p>
       <h1>Let’s talk stones.</h1>
       <p>Tell us about the stone you have in mind, a setting you’re planning or a detail you’d like us to clarify.</p>

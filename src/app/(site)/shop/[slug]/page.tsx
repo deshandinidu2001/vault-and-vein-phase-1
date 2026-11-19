@@ -54,7 +54,7 @@ export default async function StoneDetail({ params }: Props) {
     ["Lab report", stone.certified ? (stone.is_sample ? "Indicated in sample record" : "Available on request") : "Not listed"],
   ]
 
-  return <article className="wrap section shop-page space-y-6 md:space-y-8">
+  return <article className="wrap section page-top-compact space-y-6 md:space-y-8">
     <ProductData stone={stone} />
     <Link href="/shop" className="line-link text-sm"><ArrowLeft size={18} aria-hidden="true" /> Back to the shop</Link>
     <div className="film-grid !items-start">
