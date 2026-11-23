@@ -11,23 +11,25 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:3000. Without Supabase, the store uses the 12 sample listings. Forms validate and display a preview confirmation. Online payment and admin sign-in are disabled in preview mode.
+Open http://localhost:3000. Without a database, the store uses the 12 sample listings. Forms validate and display a preview confirmation. Online payment and admin sign-in are disabled in preview mode.
 
-## Connect the backend
+## Connect Neon and create an admin
 
-1. Create or select a Supabase project. Apply the pending SQL files in `supabase/migrations/` in filename order. If Shop filters is already set up, apply `202611190004_product_galleries_and_gem_types.sql` to enable galleries and Gem type creation.
-2. Copy `.env.example` to `.env.local`. Set the Supabase project URL, publishable or anon key, and service-role key. Set the service-role key on the server only. The database starts with an empty catalogue.
-3. In Supabase Auth, create a user with a confirmed email and a password. Disable public sign-ups if the project is dedicated to this store. Use the Auth user ID to grant access:
+1. Create a Neon project or branch for this store. In the **Connect** dialog, copy the pooled connection string into `DATABASE_URL` and the direct connection string into `DIRECT_URL` in `.env.local`. Use the database owner when applying migrations. Set the pooled URL as a server-only environment variable in Vercel. Keep the direct URL in the migration environment.
+2. Run `npm ci` to generate Prisma Client, then run `npm run db:deploy` to apply the schema. Migrations are run explicitly so that a preview build cannot change a production database.
+3. To create an admin from PowerShell, enter a password of 12 to 128 characters and run the provisioning command.
 
-   ```sql
-   insert into public.admin_users (user_id) values ('ACCOUNT_UUID');
+   ```powershell
+   $env:VAULT_ADMIN_PASSWORD = Read-Host -MaskInput "New admin password"
+   npm.cmd run admin:create -- owner@example.com
+   Remove-Item Env:VAULT_ADMIN_PASSWORD
    ```
 
-4. Sign in at `/admin/login` with the approved account’s email and password to open the dashboard.
-5. Select the signed-in email above Inventory to change the password. Enter the current password, choose a new one, then sign in again.
-6. Use Inventory to create, publish, edit, or remove available listings. Removing a listing keeps its order history. Use Shop filters to add and show or hide Gem types and manage the other shop filters. Hiding a Gem type also hides its listings. The admin Inbox holds submitted messages, and Orders shows payment configuration and shipment status.
+4. Sign in at `/admin/login`. Use the signed-in email in the dashboard to change the password. A password change revokes all active sessions.
 
-Apply `202611190005_request_limits.sql` after the earlier migrations to check both rate limits in one database call and clean up expired entries.
+### Move an existing catalogue
+
+Use a fresh Neon branch after applying the Prisma migrations. For the final transfer, pause source writes and let pending payments settle before taking the snapshot. Obtain the legacy direct PostgreSQL connection string from the database provider and set it as `LEGACY_DATABASE_URL` in the local shell. With PostgreSQL client tools `pg_dump` and `psql` on PATH, run `npm run db:import-legacy`. It copies catalogue data, filter settings, image references, orders, payment records and inbox messages into the new database in a single restore transaction. Admin accounts need new passwords and must be provisioned separately. Check catalogue and order counts before changing the Vercel connection. Keep the original database available until the transfer is verified.
 
 ## Upload product photos
 
@@ -57,4 +59,4 @@ node ./node_modules/@playwright/test/cli.js install chromium --only-shell
 npm test
 ```
 
-On Windows, set `NODE_USE_SYSTEM_CA=1` in the current shell if Node cannot verify the TLS certificates for browser or font downloads. Playwright checks the sample storefront on desktop and mobile Chromium. A separate local fixture exercises admin and checkout through the application using the same migrations, simulated Supabase API responses, and an intercepted PayHere form submission. The database suite checks access boundaries, reservations and payment transitions. Run the hosted PayHere sandbox check with your merchant and Supabase project.
+On Windows, set `NODE_USE_SYSTEM_CA=1` in the current shell if Node cannot verify the TLS certificates for browser or font downloads. Playwright checks the sample storefront on desktop and mobile Chromium. A separate local fixture exercises admin and checkout through the application using the same migrations, the Prisma PostgreSQL driver, and an intercepted PayHere form submission. The database suite checks access boundaries, reservations and payment transitions. Run the hosted PayHere sandbox check with your merchant and Neon project.

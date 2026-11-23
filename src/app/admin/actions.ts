@@ -5,10 +5,12 @@ import { headers } from "next/headers"
 import { revalidatePath, updateTag } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
-import { adminSession, hasAdminAccess, requireAdminDatabase } from "@/lib/admin-auth"
+import { endAdminSession, requireAdminDatabase, startAdminSession } from "@/lib/admin-auth"
+import { Prisma } from "@/generated/prisma/client"
+import { expireCheckouts } from "@/lib/checkout"
 import { backendConfigured, publicSettingsTag } from "@/lib/backend"
 import { productFlags, productInput, slugInput } from "@/lib/admin-product"
-import { isMissingInventorySchema, readGemCategories } from "@/lib/gem-categories"
+import { readGemCategories } from "@/lib/gem-categories"
 import { discardProductPhoto, uploadProductPhoto } from "@/lib/cloudinary"
 import { permitRequest } from "@/lib/http"
 import { getStoneOptions } from "@/lib/data"
@@ -36,17 +38,18 @@ export async function signIn(form: FormData) {
     redirect("/admin/login?result=unavailable")
   }
   if (!allowed) redirect("/admin/login?result=limited")
-  const session = await adminSession()
-  const { data: { user }, error } = await session.auth.signInWithPassword(input.data)
-  if (error || !user || !await hasAdminAccess(user.id)) {
-    if (user) await session.auth.signOut({ scope: "local" })
-    redirect("/admin/login?result=denied")
+  let signedIn: boolean
+  try {
+    signedIn = await startAdminSession(input.data.email, input.data.password)
+  } catch {
+    redirect("/admin/login?result=unavailable")
   }
+  if (!signedIn) redirect("/admin/login?result=denied")
   redirect("/admin")
 }
 
 export async function signOut() {
-  if (backendConfigured) await (await adminSession()).auth.signOut({ scope: "local" })
+  if (backendConfigured) await endAdminSession()
   redirect("/admin/login")
 }
 
@@ -60,12 +63,13 @@ export async function saveProduct(id: string | null, form: FormData) {
     collections: form.getAll("collections"),
   })
   if (!input.success) redirect(returnTo + "?result=invalid")
-  const [{ categories, inventoryReady, visibilityReady }, settings] = await Promise.all([readGemCategories(db), readShopFilterSettings(db)])
+  const [categories, settings, existing] = await Promise.all([
+    readGemCategories(db), readShopFilterSettings(db),
+    id ? db.product.findFirst({ where: { id, archived_at: null, status: "available" } }) : null,
+  ])
   if (!categories.some(({ slug }) => slug === input.data.gem_type)) redirect(returnTo + "?result=invalid")
-
-  const existingOptions = id ? await db.from("products").select("*").eq("id", id).maybeSingle() : null
-  if (existingOptions && (existingOptions.error || !existingOptions.data)) redirect(returnTo + "?result=unavailable")
-  const { options } = shopFilterConfig(settings.rows, [], existingOptions?.data ? [existingOptions.data] : [])
+  if (id && !existing) redirect(returnTo + "?result=unavailable")
+  const { options } = shopFilterConfig(settings.rows, [], existing ? [existing] : [])
   if (!options.cut.some(({ value }) => value === normalizeShopOption(input.data.cut)) ||
     input.data.collections.some((collection) => !options.collection.some(({ value }) => value === collection))) {
     redirect(returnTo + "?result=invalid")
@@ -73,43 +77,31 @@ export async function saveProduct(id: string | null, form: FormData) {
 
   const file = form.get("photo")
   const hasPhoto = file instanceof File && file.size > 0
-  const removePhoto = form.get("remove_photo") === "on"
-  const changePhoto = hasPhoto || removePhoto
-  let previousPhoto: string | null = null
+  if (id && hasPhoto) redirect(returnTo + "?result=photo-choice#product-photos")
   let newPhoto: string | null = null
-  if (changePhoto) {
-    if (!visibilityReady) redirect(returnTo + "?result=photo-schema")
-    if (existingOptions?.data?.gallery_revision) redirect(returnTo + "?result=photo-choice#product-photos")
-    if (hasPhoto && removePhoto) redirect(returnTo + "?result=photo-choice")
+  if (hasPhoto) {
+    const upload = await uploadProductPhoto(file)
+    if ("error" in upload) redirect(returnTo + "?result=" + upload.error)
+    newPhoto = upload.url
+  }
+  try {
     if (id) {
-      const existing = await db.from("products").select("image_url").eq("id", id).eq("status", "available")
-        .is("archived_at", null).maybeSingle()
-      if (existing.error || !existing.data) redirect(returnTo + "?result=unavailable")
-      previousPhoto = existing.data.image_url
+      const { count } = await db.product.updateMany({
+        where: { id, status: "available", archived_at: null }, data: input.data,
+      })
+      if (count === 0) throw new Error("Listing is no longer available")
+    } else {
+      await db.product.create({ data: { ...input.data, image_url: newPhoto } })
     }
-    if (hasPhoto) {
-      const upload = await uploadProductPhoto(file)
-      if ("error" in upload) redirect(returnTo + "?result=" + upload.error)
-      newPhoto = upload.url
+  } catch (error) {
+    if (newPhoto) {
+      // Confirm an interrupted write did not save the uploaded photo.
+      const saved = await db.product.findFirst({ where: { image_url: newPhoto }, select: { id: true } })
+        .catch(() => undefined)
+      if (saved === null) await discardProductPhoto(newPhoto)
     }
+    redirect(returnTo + "?result=" + (isDuplicate(error) ? "duplicate" : "unavailable"))
   }
-
-  const values = changePhoto ? { ...input.data, image_url: newPhoto } : input.data
-  const product = id ? db.from("products").update(values).eq("id", id).eq("status", "available") : db.from("products").insert(values)
-  if (id && inventoryReady) product.is("archived_at", null)
-  if (id && changePhoto) {
-    if (previousPhoto) product.eq("image_url", previousPhoto)
-    else product.is("image_url", null)
-  }
-  const result = await product.select("id").maybeSingle()
-  if (newPhoto && (result.error || !result.data)) {
-    // Check for an ambiguous write before deleting an upload that may have been saved.
-    const stored = await db.from("products").select("id").eq("image_url", newPhoto).maybeSingle()
-    if (!stored.error && !stored.data) await discardProductPhoto(newPhoto)
-  }
-  if (result.error?.code === "23505") redirect(returnTo + "?result=duplicate")
-  if (result.error || !result.data) redirect(returnTo + "?result=unavailable")
-  if (changePhoto && previousPhoto) await discardProductPhoto(previousPhoto)
   refreshCatalogue()
   redirect("/admin?result=saved")
 }
@@ -118,12 +110,13 @@ export async function editProductGallery(id: string, revision: string, operation
   const db = await requireAdminDatabase()
   if (!z.uuid().safeParse(id).success || !z.uuid().safeParse(revision).success) redirect("/admin")
   const url = (result: string) => "/admin/products/" + id + "?result=" + result + "#product-photos"
-  const current = await db.from("products").select("image_url,gallery_urls,gallery_revision").eq("id", id)
-    .eq("status", "available").is("archived_at", null).maybeSingle()
-  if (isMissingInventorySchema(current.error)) redirect(url("gallery-schema"))
-  if (current.error || !current.data || current.data.gallery_revision !== revision) redirect(url("photo-stale"))
+  const current = await db.product.findFirst({
+    where: { id, status: "available", archived_at: null },
+    select: { image_url: true, gallery_urls: true, gallery_revision: true },
+  })
+  if (!current || current.gallery_revision !== revision) redirect(url("photo-stale"))
 
-  const photos: string[] = [current.data.image_url, ...current.data.gallery_urls].filter(Boolean)
+  const photos = [current.image_url, ...current.gallery_urls].filter((entry): entry is string => Boolean(entry))
   let upload: string | null = null
   let removed: string | null = null
   if (operation === "add") {
@@ -142,15 +135,16 @@ export async function editProductGallery(id: string, revision: string, operation
     else removed = selected
   }
 
-  const { data, error } = await db.from("products")
-    .update({ image_url: photos[0] ?? null, gallery_urls: photos.slice(1), gallery_revision: randomUUID() })
-    .eq("id", id).eq("gallery_revision", revision).eq("status", "available").is("archived_at", null)
-    .select("id").maybeSingle()
-  if (error || !data) {
+  const result = await db.product.updateMany({
+    data: { image_url: photos[0] ?? null, gallery_urls: photos.slice(1), gallery_revision: randomUUID() },
+    where: { id, gallery_revision: revision, status: "available", archived_at: null },
+  }).catch(() => null)
+  if (!result?.count) {
     if (upload) {
-      // An interrupted response can follow a successful write.
-      const stored = await db.from("products").select("image_url,gallery_urls").eq("id", id).maybeSingle()
-      if (!stored.error && stored.data?.image_url !== upload && !stored.data?.gallery_urls?.includes(upload)) {
+      const stored = await db.product.findUnique({
+        where: { id }, select: { image_url: true, gallery_urls: true },
+      }).catch(() => undefined)
+      if (stored !== undefined && stored?.image_url !== upload && !stored?.gallery_urls.includes(upload)) {
         await discardProductPhoto(upload)
       }
     }
@@ -164,22 +158,33 @@ export async function editProductGallery(id: string, revision: string, operation
 export async function setProductVisibility(id: string, visible: boolean) {
   const db = await requireAdminDatabase()
   if (!z.uuid().safeParse(id).success || typeof visible !== "boolean") redirect("/admin")
-  const { inventoryReady } = await readGemCategories(db)
-  const product = db.from("products").update({ is_published: visible }).eq("id", id).neq("status", "reserved")
-  const { data, error } = await (inventoryReady ? product.is("archived_at", null) : product).select("id").maybeSingle()
-  if (!error && data) refreshCatalogue()
-  redirect("/admin?result=" + (error || !data ? "unavailable" : "saved"))
+  const result = await db.product.updateMany({
+    where: { id, status: { not: "reserved" }, archived_at: null }, data: { is_published: visible },
+  }).catch(() => null)
+  if (result?.count) refreshCatalogue()
+  redirect("/admin?result=" + (result?.count ? "saved" : "unavailable"))
 }
 
 export async function deleteProduct(id: string) {
   const db = await requireAdminDatabase()
   if (!z.uuid().safeParse(id).success) redirect("/admin")
-  const { error: expireError } = await db.rpc("expire_checkouts")
-  if (expireError) redirect("/admin?result=unavailable")
-  const { data, error } = await db.from("products").update({ is_published: false, archived_at: new Date().toISOString() })
-    .eq("id", id).eq("status", "available").is("archived_at", null).select("id").maybeSingle()
-  if (!error && data) refreshCatalogue()
-  redirect("/admin?result=" + (isMissingInventorySchema(error) ? "migration" : error || !data ? "unavailable" : "deleted"))
+  let count: number
+  try {
+    await expireCheckouts(db)
+    const result = await db.product.updateMany({
+      where: { id, status: "available", archived_at: null },
+      data: { is_published: false, archived_at: new Date() },
+    })
+    count = result.count
+  } catch {
+    redirect("/admin?result=unavailable")
+  }
+  if (count) refreshCatalogue()
+  redirect("/admin?result=" + (count ? "deleted" : "unavailable"))
+}
+
+function isDuplicate(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
 }
 
 const filtersUrl = "/admin?view=filters&result="
@@ -193,9 +198,11 @@ export async function setCategoryVisibility(slug: string, visible: boolean) {
   const db = await requireAdminDatabase()
   const key = slugInput.safeParse(slug)
   if (!key.success || typeof visible !== "boolean") redirect(filtersUrl + "unavailable")
-  const { data, error } = await db.from("gem_categories").update({ is_visible: visible }).eq("slug", key.data).select("slug").maybeSingle()
-  if (!error && data) refreshShopSettings()
-  redirect(filtersUrl + (isMissingInventorySchema(error) ? "migration" : error || !data ? "unavailable" : "category-saved"))
+  const result = await db.gemCategory.updateMany({
+    where: { slug: key.data }, data: { is_visible: visible },
+  }).catch(() => null)
+  if (result?.count) refreshShopSettings()
+  redirect(filtersUrl + (result?.count ? "category-saved" : "unavailable"))
 }
 
 export async function addGemType(form: FormData) {
@@ -204,11 +211,13 @@ export async function addGemType(form: FormData) {
   if (!name.success) redirect(filtersUrl + "filter-invalid")
   const slug = slugInput.safeParse(customShopOption("type", name.data))
   if (!slug.success) redirect(filtersUrl + "filter-invalid")
-  const { error } = await db.from("gem_categories").insert({ slug: slug.data, name: name.data })
-  if (!error) refreshShopSettings()
-  redirect(filtersUrl + (error?.code === "23505" ? "filter-duplicate"
-    : error?.code === "42501" || isMissingInventorySchema(error) ? "gallery-migration"
-      : error ? "unavailable" : "gem-type-added"))
+  try {
+    await db.gemCategory.create({ data: { slug: slug.data, name: name.data } })
+  } catch (error) {
+    redirect(filtersUrl + (isDuplicate(error) ? "filter-duplicate" : "unavailable"))
+  }
+  refreshShopSettings()
+  redirect(filtersUrl + "gem-type-added")
 }
 
 const filterLabel = z.string().trim().min(1).max(120)
@@ -229,16 +238,17 @@ export async function setShopFilterVisibility(key: string, value: string, visibl
     label = choice.label
   }
 
-  const saveVisibility = () => db.from("shop_filter_settings").update({ is_visible: visible })
-    .eq("filter_key", key).eq("value", value).select("filter_key").maybeSingle()
-  let result = await saveVisibility()
-  if (!result.error && !result.data) {
-    result = await db.from("shop_filter_settings").insert({ filter_key: key, value, label, is_visible: visible })
-      .select("filter_key").maybeSingle()
-    if (result.error?.code === "23505") result = await saveVisibility()
+  try {
+    await db.shopFilterSetting.upsert({
+      where: { filter_key_value: { filter_key: key, value } },
+      create: { filter_key: key, value, label, is_visible: visible },
+      update: { is_visible: visible },
+    })
+  } catch {
+    redirect(filtersUrl + "unavailable")
   }
-  if (!result.error && result.data) refreshShopSettings()
-  redirect(filtersUrl + (isMissingInventorySchema(result.error) ? "filter-migration" : result.error || !result.data ? "unavailable" : "filter-saved"))
+  refreshShopSettings()
+  redirect(filtersUrl + "filter-saved")
 }
 
 export async function addShopFilterOption(key: string, form: FormData) {
@@ -250,28 +260,33 @@ export async function addShopFilterOption(key: string, form: FormData) {
   if (!value || value.length > 120 || (optionKey === "collection" && !slugInput.safeParse(value).success)) {
     redirect(filtersUrl + "filter-invalid")
   }
-  const { ready, options } = await getStoneOptions()
-  if (!ready) redirect(filtersUrl + "filter-migration")
+  const { options } = await getStoneOptions()
   if (options[optionKey].some((option) => option.value === value)) redirect(filtersUrl + "filter-duplicate")
-  const { error } = await db.from("shop_filter_settings").insert({ filter_key: optionKey, value, label: label.data })
-  if (!error) refreshShopSettings()
-  redirect(filtersUrl + (error?.code === "23505" ? "filter-duplicate" : error ? "unavailable" : "filter-added"))
+  try {
+    await db.shopFilterSetting.create({ data: { filter_key: optionKey, value, label: label.data } })
+  } catch (error) {
+    redirect(filtersUrl + (isDuplicate(error) ? "filter-duplicate" : "unavailable"))
+  }
+  refreshShopSettings()
+  redirect(filtersUrl + "filter-added")
 }
 
 export async function shipOrder(id: string) {
   const db = await requireAdminDatabase()
   if (!z.uuid().safeParse(id).success) redirect("/admin?view=orders")
-  const { data, error } = await db.from("orders").update({ status: "shipped", shipped_at: new Date().toISOString() })
-    .eq("id", id).eq("status", "paid").select("id").maybeSingle()
-  if (!error && data) revalidatePath("/admin")
-  redirect("/admin?view=orders&result=" + (error || !data ? "unavailable" : "shipped"))
+  const result = await db.order.updateMany({
+    where: { id, status: "paid" }, data: { status: "shipped", shipped_at: new Date() },
+  }).catch(() => null)
+  if (result?.count) revalidatePath("/admin")
+  redirect("/admin?view=orders&result=" + (result?.count ? "shipped" : "unavailable"))
 }
 
 export async function readMessage(id: string) {
   const db = await requireAdminDatabase()
   if (!z.uuid().safeParse(id).success) redirect("/admin?view=inbox")
-  const { data, error } = await db.from("inbox").update({ read_at: new Date().toISOString() })
-    .eq("id", id).is("read_at", null).select("id").maybeSingle()
-  if (!error && data) revalidatePath("/admin")
-  redirect("/admin?view=inbox&result=" + (error || !data ? "unavailable" : "read"))
+  const result = await db.inboxMessage.updateMany({
+    where: { id, read_at: null }, data: { read_at: new Date() },
+  }).catch(() => null)
+  if (result?.count) revalidatePath("/admin")
+  redirect("/admin?view=inbox&result=" + (result?.count ? "read" : "unavailable"))
 }

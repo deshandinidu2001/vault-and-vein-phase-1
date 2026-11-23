@@ -13,7 +13,7 @@ function Visibility({ filter, value = "", label, visible }: { filter: ShopFilter
 }
 
 export function AdminShopFilters({ controls, options, ready }: ShopFilterConfig & { ready: boolean }) {
-  if (!ready) return <p className="admin-notice">Apply the shop filter settings migration in Supabase to manage these controls.</p>
+  if (!ready) return <p className="admin-notice">Apply the Prisma migrations to manage these controls.</p>
   return <div className="grid gap-4">
     <p className="admin-muted max-w-none">Hiding an individual Gem type also hides its listings. Hide the whole Gem type filter to remove just the dropdown.</p>
     <div className="grid items-start gap-4 lg:grid-cols-2 2xl:grid-cols-3">

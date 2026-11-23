@@ -8,12 +8,7 @@ import { productInput } from "../src/lib/admin-product.ts"
 import { productPhotoUrl } from "../src/lib/product-photo.ts"
 
 const db = new PGlite()
-const sample = await readFile(new URL("../supabase/migrations/202611180001_catalogue.sql", import.meta.url), "utf8")
-const checkout = await readFile(new URL("../supabase/migrations/202611180002_checkout.sql", import.meta.url), "utf8")
-const inventory = await readFile(new URL("../supabase/migrations/202611190001_inventory_management.sql", import.meta.url), "utf8")
-const photos = await readFile(new URL("../supabase/migrations/202611190002_product_photos_and_category_visibility.sql", import.meta.url), "utf8")
-const filters = await readFile(new URL("../supabase/migrations/202611190003_shop_filter_settings.sql", import.meta.url), "utf8")
-const galleries = await readFile(new URL("../supabase/migrations/202611190004_product_galleries_and_gem_types.sql", import.meta.url), "utf8")
+const migration = await readFile(new URL("../prisma/migrations/20261123000100_initial/migration.sql", import.meta.url), "utf8")
 const mint = {
   slug: "mint", name: "Mint Stone", gem_type: "sapphire", cut: "Oval", carat: 2.14,
   length_mm: 8.30, width_mm: 6.40, depth_mm: 4.20, colour: "Green", clarity: "Eye clean",
@@ -23,21 +18,13 @@ const mint = {
 const customer = { first_name: "Example", last_name: "Customer", email: "buyer@example.test" }
 
 before(async () => {
-  await db.exec("create role anon; create role authenticated; create role service_role bypassrls; create schema auth; create table auth.users (id uuid primary key);")
-  await db.exec(sample)
-  await db.exec(checkout)
-  await db.exec(inventory)
-  await db.exec(photos)
-  await db.exec(filters)
-  await db.exec(galleries)
-  await db.exec(await readFile(new URL("../supabase/migrations/202611190005_request_limits.sql", import.meta.url), "utf8"))
+  await db.exec(migration)
+  await db.exec("create role store_guest")
 })
 after(() => db.close())
 
 test("combined request limits preserve both quotas, reclaim expired buckets and restrict execution", async () => {
-  for (const role of ["anon","authenticated"]) {
-    assert.equal((await db.query("select has_function_privilege($1,'public.permit_store_request(text,text,integer)','execute') as allowed", [role])).rows[0].allowed, false)
-  }
+  assert.equal((await db.query("select has_function_privilege('store_guest','public.permit_store_request(text,text,integer)','execute') as allowed")).rows[0].allowed, false)
   await db.query("insert into public.rate_limits values ('stale', now() - interval '2 days', 1)")
   const hit = async (source, email, max) => (await db.query("select public.permit_store_request($1,$2,$3) as ok", [source,email,max])).rows[0].ok
   assert.equal(await hit("first","one",1), true)
@@ -72,66 +59,40 @@ async function status(table, id) {
   return rows[0].status
 }
 
-test("admins can configure shop filters without removing matching listings", async () => {
+test("filter settings preserve listings and enforce valid options", async () => {
   const product = await stone({ cut: "Marquise", collections: ["estate-stones"] })
-  await db.exec("set role service_role")
-  try {
-    await db.exec("insert into public.shop_filter_settings (filter_key, value, label) values ('cut','marquise','Marquise'), ('collection','estate-stones','Estate stones'), ('price','','')")
-    await db.exec("update public.shop_filter_settings set is_visible = false where filter_key = 'price' or value = 'marquise'")
-    await assert.rejects(db.exec("update public.shop_filter_settings set label = 'New label' where value = 'marquise'"), /permission denied/)
-    await assert.rejects(db.exec("insert into public.shop_filter_settings (filter_key,value,label) values ('price','5','Five')"), /check constraint/)
-  } finally {
-    await db.exec("reset role")
-  }
-
-  for (const role of ["anon", "authenticated"]) {
-    await db.exec("set role " + role)
-    try {
-      const settings = await db.query("select value, is_visible from public.shop_filter_settings order by value")
-      assert.deepEqual(settings.rows, [
-        { value: "", is_visible: false }, { value: "estate-stones", is_visible: true }, { value: "marquise", is_visible: false },
-      ])
-      assert.deepEqual((await db.query("select id from public.products where id = $1", [product.id])).rows, [{ id: product.id }])
-      await assert.rejects(db.exec("update public.shop_filter_settings set is_visible = true"), /permission denied/)
-      await assert.rejects(db.exec("insert into public.shop_filter_settings (filter_key) values ('q')"), /permission denied/)
-    } finally {
-      await db.exec("reset role")
-    }
-  }
+  await db.exec("insert into public.shop_filter_settings (filter_key, value, label) values ('cut','marquise','Marquise'), ('collection','estate-stones','Estate stones'), ('price','','')")
+  await db.exec("update public.shop_filter_settings set is_visible = false where filter_key = 'price' or value = 'marquise'")
+  await assert.rejects(db.exec("insert into public.shop_filter_settings (filter_key,value,label) values ('price','5','Five')"), /check constraint/)
+  const settings = await db.query("select value, is_visible from public.shop_filter_settings order by value")
+  assert.deepEqual(settings.rows, [
+    { value: "", is_visible: false }, { value: "estate-stones", is_visible: true }, { value: "marquise", is_visible: false },
+  ])
+  assert.deepEqual((await db.query("select id from public.products where id = $1", [product.id])).rows, [{ id: product.id }])
 })
 
-test("publish visibility, private order and inbox data, and RPC permissions", async () => {
+test("a role without grants cannot read or mutate store records or call restricted functions", async () => {
   const live = await stone()
-  const draft = await stone({ is_published: false })
   const user = randomUUID()
-  await db.query("insert into auth.users values ($1)", [user])
-  await db.query("insert into public.admin_users values ($1)", [user])
+  await db.query("insert into public.admin_users (id,email,password_hash) values ($1,$2,$3)", [user, "admin@example.test", "test-hash"])
   await db.query("insert into public.inbox (kind,email,payload) values ('contact',$1,$2)", [customer.email, { name: "Example" }])
   const order = await reserve([live.id])
-  for (const role of ["anon", "authenticated"]) {
-    await db.exec("set role " + role)
-    try {
-      assert.deepEqual((await db.query("select id from public.products where id in ($1,$2)", [live.id, draft.id])).rows, [{ id: live.id }])
-      for (const table of ["admin_users", "inbox", "orders", "order_items", "stock_holds", "payment_events", "rate_limits"]) {
-        await assert.rejects(db.query("select * from public." + table), /permission denied/)
-      }
-      await assert.rejects(db.query("update public.products set price_lkr = 1 where id = $1", [live.id]), /permission denied/)
-      await assert.rejects(reserve([draft.id]), /permission denied/)
-      await assert.rejects(event(order, "2"), /permission denied/)
-    } finally {
-      await db.exec("reset role")
-    }
-  }
-  await db.exec("set role service_role")
+  await db.exec("set role store_guest")
   try {
-    assert.deepEqual((await db.query("select user_id from public.admin_users where user_id = $1", [user])).rows, [{ user_id: user }])
-    assert.equal((await db.query("update public.inbox set read_at = now() where read_at is null returning id")).rows.length, 1)
-    assert.equal(await event(order, "2"), true)
-    const shipped = await db.query("update public.orders set status = 'shipped', shipped_at = now() where id = $1 and status = 'paid' returning status", [order.id])
-    assert.deepEqual(shipped.rows, [{ status: "shipped" }])
+    for (const table of ["products", "gem_categories", "shop_filter_settings", "admin_users", "admin_sessions",
+      "inbox", "orders", "order_items", "stock_holds", "payment_events", "rate_limits"]) {
+      await assert.rejects(db.query("select * from public." + table), /permission denied/)
+    }
+    await assert.rejects(db.query("update public.products set price_lkr = 1 where id = $1", [live.id]), /permission denied/)
+    await assert.rejects(reserve([live.id]), /permission denied/)
+    await assert.rejects(event(order, "2"), /permission denied/)
   } finally {
     await db.exec("reset role")
   }
+  assert.equal((await db.query("update public.inbox set read_at = now() where read_at is null returning id")).rows.length, 1)
+  assert.equal(await event(order, "2"), true)
+  const shipped = await db.query("update public.orders set status = 'shipped', shipped_at = now() where id = $1 and status = 'paid' returning status", [order.id])
+  assert.deepEqual(shipped.rows, [{ status: "shipped" }])
 })
 
 test("prices come from the catalogue and only available live stones can be held", async () => {
@@ -165,50 +126,16 @@ test("deleting listings preserves order history while preventing checkout", asyn
   assert.deepEqual((await db.query("select product_id from public.order_items where order_id = $1", [order.id])).rows, [{ product_id: product.id }])
   await db.exec("update public.gem_categories set name = 'Blue Beryl' where slug = 'aquamarine'")
   await assert.rejects(db.exec("delete from public.gem_categories where slug = 'aquamarine'"), /foreign key constraint/)
-  await db.exec("set role anon")
-  try {
-    assert.deepEqual((await db.query("select name from public.gem_categories where slug = 'aquamarine'")).rows, [{ name: "Blue Beryl" }])
-    assert.deepEqual((await db.query("select id from public.products where id = $1", [product.id])).rows, [])
-    await assert.rejects(db.exec("update public.gem_categories set name = 'Invalid' where slug = 'aquamarine'"), /permission denied/)
-  } finally {
-    await db.exec("reset role")
-  }
 })
 
-test("the service role can create gem types and change their visibility, and hidden listings cannot be bought", async () => {
+test("hidden gem types cannot be bought", async () => {
   const product = await stone({ gem_type: "garnet" })
-  await db.exec("set role service_role")
-  try {
-    await db.exec("insert into public.gem_categories (slug,name) values ('test-gem','Test gem')")
-    await assert.rejects(db.exec("insert into public.gem_categories (slug,name,is_builtin) values ('bad-gem','Bad gem',true)"), /permission denied/)
-    await assert.rejects(db.exec("update public.gem_categories set name = 'New name' where slug = 'garnet'"), /permission denied/)
-    await assert.rejects(db.exec("delete from public.gem_categories where slug = 'garnet'"), /permission denied/)
-    await db.exec("update public.gem_categories set is_visible = false where slug = 'garnet'")
-    await assert.rejects(reserve([product.id]), /stones are unavailable/)
-    assert.equal(await status("products", product.id), "available")
-  } finally {
-    await db.exec("reset role")
-  }
-
-  for (const role of ["anon", "authenticated"]) {
-    await db.exec("set role " + role)
-    try {
-      assert.deepEqual((await db.query("select slug from public.gem_categories where slug = 'garnet'")).rows, [])
-      assert.deepEqual((await db.query("select slug from public.gem_categories where slug = 'test-gem'")).rows, [{ slug: "test-gem" }])
-      assert.deepEqual((await db.query("select id from public.products where id = $1", [product.id])).rows, [])
-      await assert.rejects(db.exec("update public.gem_categories set is_visible = true where slug = 'garnet'"), /permission denied/)
-      await assert.rejects(db.exec("insert into public.gem_categories (slug,name) values ('guest-gem','Guest gem')"), /permission denied/)
-    } finally {
-      await db.exec("reset role")
-    }
-  }
-  await db.exec("set role service_role")
-  try {
-    await db.exec("update public.gem_categories set is_visible = true where slug = 'garnet'")
-    assert.ok(await reserve([product.id]))
-  } finally {
-    await db.exec("reset role")
-  }
+  await db.exec("insert into public.gem_categories (slug,name) values ('test-gem','Test gem')")
+  await db.exec("update public.gem_categories set is_visible = false where slug = 'garnet'")
+  await assert.rejects(reserve([product.id]), /stones are unavailable/)
+  assert.equal(await status("products", product.id), "available")
+  await db.exec("update public.gem_categories set is_visible = true where slug = 'garnet'")
+  assert.ok(await reserve([product.id]))
 })
 
 test("product photos use a restricted Cloudinary delivery path", async () => {
@@ -217,15 +144,10 @@ test("product photos use a restricted Cloudinary delivery path", async () => {
   assert.equal(product.image_url, photo)
   assert.deepEqual(product.gallery_urls, [])
   const extra = photo.replace(/[^/]+$/, randomUUID() + ".png")
-  await db.exec("set role service_role")
-  try {
-    const { rows } = await db.query("update public.products set gallery_urls = $1 where id = $2 returning gallery_urls", [[extra], product.id])
-    assert.deepEqual(rows[0].gallery_urls, [extra])
-    for (const invalid of [[photo], [extra, extra], [null], ["https://example.test/extra.png"]]) {
-      await assert.rejects(db.query("update public.products set gallery_urls = $1 where id = $2", [invalid, product.id]), /products_gallery_check/)
-    }
-  } finally {
-    await db.exec("reset role")
+  const { rows } = await db.query("update public.products set gallery_urls = $1 where id = $2 returning gallery_urls", [[extra], product.id])
+  assert.deepEqual(rows[0].gallery_urls, [extra])
+  for (const invalid of [[photo], [extra, extra], [null], ["https://example.test/extra.png"]]) {
+    await assert.rejects(db.query("update public.products set gallery_urls = $1 where id = $2", [invalid, product.id]), /products_gallery_check/)
   }
   assert.match(productPhotoUrl(photo, 180), /\/c_limit,w_180,f_auto,q_auto\/v1\//)
   for (const invalid of [photo + "?other=1", photo.replace("res.cloudinary.com", "example.test"), photo.replace(/\.png$/, ".svg")]) {

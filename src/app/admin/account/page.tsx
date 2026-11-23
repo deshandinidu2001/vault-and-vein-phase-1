@@ -6,7 +6,7 @@ const messages = {
   invalid: "Enter a different password of 12 to 128 characters and confirm it.",
   denied: "The current password could not be verified.",
   limited: "Too many attempts. Please wait before trying again.",
-  failed: "Supabase could not update the password. Sign in again and check your password policy.",
+  failed: "The password could not be updated. Please try again.",
 }
 
 export default async function AccountPage({ searchParams }: PageProps<"/admin/account">) {

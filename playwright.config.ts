@@ -22,9 +22,8 @@ export default defineConfig({
     timeout: 180_000,
     env: {
       NEXT_PUBLIC_SITE_URL: storefrontUrl,
-      NEXT_PUBLIC_SUPABASE_URL: "",
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: "",
-      SUPABASE_SERVICE_ROLE_KEY: "",
+      DATABASE_URL: "",
+      DIRECT_URL: "",
       PAYHERE_MODE: "",
       PAYHERE_MERCHANT_ID: "",
       PAYHERE_MERCHANT_SECRET: "",

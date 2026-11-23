@@ -2,8 +2,7 @@
 
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
-import { adminIdentity } from "@/lib/admin-auth"
-import { publicDatabase } from "@/lib/backend"
+import { adminIdentity, updateAdminPassword } from "@/lib/admin-auth"
 import { permitRequest } from "@/lib/http"
 
 async function permitPasswordChange(id: string) {
@@ -16,21 +15,19 @@ async function permitPasswordChange(id: string) {
 }
 
 export async function changePassword(form: FormData) {
-  const { session, id, email } = await adminIdentity()
+  const { id } = await adminIdentity()
   const current = form.get("current")
   const password = form.get("password")
-  if (!email || typeof current !== "string" || !current || current.length > 128 ||
+  if (typeof current !== "string" || !current || current.length > 128 ||
     typeof password !== "string" || password.length < 12 || password.length > 128 ||
     password === current || password !== form.get("confirm")) redirect("/admin/account?result=invalid")
   if (!await permitPasswordChange(id)) redirect("/admin/account?result=limited")
-  // Some projects do not enforce current_password. Verify proof independently
-  // without overwriting the signed-in browser session.
-  const proof = publicDatabase()
-  const check = await proof.auth.signInWithPassword({ email, password: current })
-  if (check.error || check.data.user?.id !== id) redirect("/admin/account?result=denied")
-  await proof.auth.signOut({ scope: "local" })
-  const { error } = await session.auth.updateUser({ password, current_password: current })
-  if (error) redirect("/admin/account?result=failed")
-  await session.auth.signOut({ scope: "global" })
+  let updated: boolean
+  try {
+    updated = await updateAdminPassword(id, current, password)
+  } catch {
+    redirect("/admin/account?result=failed")
+  }
+  if (!updated) redirect("/admin/account?result=denied")
   redirect("/admin/login?result=changed")
 }

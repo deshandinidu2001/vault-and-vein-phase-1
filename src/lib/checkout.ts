@@ -1,6 +1,6 @@
 import "server-only"
 import { z } from "zod"
-import { backendConfigured, serviceDatabase } from "./backend"
+import { backendConfigured, database } from "./backend"
 import { asPayHereAmount, checkoutHash, payhereEndpoints } from "./payhere"
 
 export const checkoutInput = z.object({
@@ -29,9 +29,9 @@ export function checkoutConfig() {
 
 type Config = NonNullable<ReturnType<typeof checkoutConfig>>
 type Customer = Omit<z.infer<typeof checkoutInput>, "ids" | "requestId">
-type Order = { id: string; public_token: string; total_lkr: number }
+export type CheckoutOrder = { id: string; public_token: string; total_lkr: number }
 
-export function paymentForm(config: Config, customer: Customer, order: Order) {
+export function paymentForm(config: Config, customer: Customer, order: CheckoutOrder) {
   const returnPath = "/order/" + order.id + "?key=" + order.public_token
   const amount = asPayHereAmount(order.total_lkr)
   return {
@@ -54,10 +54,15 @@ export function paymentForm(config: Config, customer: Customer, order: Order) {
 }
 
 export async function getOrderStatus(id: string, token: string) {
-  const { data, error } = await serviceDatabase().from("orders")
-    .select("status,total_lkr,expires_at,order_items(product_id)").eq("id", id).eq("public_token", token).maybeSingle()
-  if (error) throw new Error("Could not load order status")
+  const data = await database().order.findUnique({
+    where: { id, public_token: token },
+    select: { status: true, total_lkr: true, expires_at: true, order_items: { select: { product_id: true } } },
+  })
   if (!data) return null
-  const status = data.status === "pending" && Date.parse(data.expires_at) <= Date.now() ? "expired" : data.status
+  const status = data.status === "pending" && data.expires_at.getTime() <= Date.now() ? "expired" : data.status
   return { ...data, status }
+}
+
+export async function expireCheckouts(db = database()) {
+  await db.$queryRaw`SELECT public.expire_checkouts()::text`
 }

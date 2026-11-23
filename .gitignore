@@ -47,3 +47,6 @@ next-env.d.ts
 # Local values and Phase 2 example
 .env.local
 !.env.example
+
+# Generated Prisma client
+/src/generated/prisma/

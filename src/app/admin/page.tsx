@@ -2,7 +2,7 @@ import Link from "next/link"
 import { adminIdentity, requireAdminDatabase } from "@/lib/admin-auth"
 import { formatPrice } from "@/lib/pricing"
 import { readGemCategories } from "@/lib/gem-categories"
-import { checkoutConfig } from "@/lib/checkout"
+import { checkoutConfig, expireCheckouts } from "@/lib/checkout"
 import { StoneMedia } from "@/components/product/stone-media"
 import { getStoneOptions } from "@/lib/data"
 import { deleteProduct, readMessage, setProductVisibility, shipOrder, signOut } from "./actions"
@@ -10,25 +10,18 @@ import { AdminShopFilters } from "./shop-filters"
 
 const panels = { inventory: "Inventory", filters: "Shop filters", orders: "Orders", inbox: "Inbox" } as const
 const stockFilters = ["available", "reserved", "sold"] as const
-type InventoryRow = {
-  id: string; slug: string; name: string; gem_type: string; status: string; price_lkr: number
-  is_published: boolean; is_sample: boolean; cut: string; tint: string; image_url?: string | null
-}
 const results = {
   unavailable: "This change could not be applied. Refresh and check the current record.",
   saved: "Listing saved.",
   shipped: "Order marked as shipped.",
   read: "Message marked as read.",
   deleted: "Listing removed from the shop and inventory.",
-  migration: "Apply the inventory management migration to enable this action.",
   "category-saved": "Gem type visibility updated.",
   "gem-type-added": "Gem type added.",
-  "gallery-migration": "Apply the product galleries and gem types migration in Supabase.",
   "filter-saved": "Shop filter visibility updated.",
   "filter-added": "Shop filter option added.",
   "filter-duplicate": "That filter option already exists.",
   "filter-invalid": "Enter a valid name for the new filter option.",
-  "filter-migration": "Apply the shop filter settings migration before making changes.",
 }
 const card = "admin-panel min-w-0 space-y-3 p-5"
 const date = new Intl.DateTimeFormat("en-LK", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Colombo" })
@@ -39,10 +32,11 @@ function value(value: unknown) {
   return typeof value === "string" ? value.trim() : ""
 }
 
-function Details({ record, labels }: { record: Record<string, unknown>; labels: Record<string, string> }) {
+function Details({ record, labels }: { record: unknown; labels: Record<string, string> }) {
+  if (!record || typeof record !== "object" || Array.isArray(record)) return null
   return <dl className="grid gap-2">
     {Object.entries(labels).map(([key, label]) => {
-      const text = value(record[key])
+      const text = value((record as Record<string, unknown>)[key])
       return text && <div key={key} className="grid gap-1 sm:grid-cols-[7rem_minmax(0,1fr)]">
         <dt className="font-semibold">{label}</dt>
         <dd className="whitespace-pre-wrap wrap-anywhere">{text}</dd>
@@ -69,27 +63,29 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   }
   const result = typeof query.result === "string" && Object.hasOwn(results, query.result) ? results[query.result as keyof typeof results] : null
 
-  const [{ categories, inventoryReady, visibilityReady }, expiry] = await Promise.all([
-    section === "inventory" || section === "filters" ? readGemCategories(db) : { categories: [], inventoryReady: false, visibilityReady: false },
-    section === "inventory" || section === "orders" ? db.rpc("expire_checkouts") : null,
+  const [categories] = await Promise.all([
+    section === "inventory" || section === "filters" ? readGemCategories(db) : [],
+    section === "inventory" || section === "orders" ? expireCheckouts(db) : null,
   ])
-  if (expiry?.error) throw new Error("Could not refresh reservations")
   const categoryNames = new Map(categories.map((category) => [category.slug, category]))
   const payment = section === "orders" ? checkoutConfig() : null
 
-  const productColumns = "id,slug,name,gem_type,status,price_lkr,is_published,is_sample,cut,tint"
-  const products = db.from("products").select(visibilityReady ? productColumns + ",image_url" : productColumns)
-  if (inventoryReady) products.is("archived_at", null)
-  if (status) products.eq("status", status)
   const filterConfig = section === "filters" ? await getStoneOptions(categories) : null
-  const response = section === "filters" ? { data: [], error: null } : await (section === "inventory"
-    ? products.order("name").order("id").range(offset, offset + pageSize).overrideTypes<InventoryRow[], { merge: false }>()
-    : section === "orders"
-      ? db.from("orders").select("id,status,total_lkr,shipping_lkr,customer,created_at,order_items(name,price_lkr)").order("created_at", { ascending: false }).order("id").range(offset, offset + pageSize)
-      : db.from("inbox").select("id,kind,email,payload,read_at,created_at").order("created_at", { ascending: false }).order("id").range(offset, offset + pageSize)
-  )
-  if (response.error) throw new Error("Could not load store records")
-  const rows = response.data.slice(0, pageSize)
+  const paging = { skip: offset, take: pageSize + 1 }
+  const records = section === "inventory"
+    ? await db.product.findMany({
+      ...paging, where: { archived_at: null, status }, orderBy: [{ name: "asc" }, { id: "asc" }],
+      select: { id: true, slug: true, name: true, gem_type: true, status: true, price_lkr: true,
+        is_published: true, is_sample: true, cut: true, tint: true, image_url: true },
+    })
+    : section === "orders" ? await db.order.findMany({
+      ...paging, orderBy: [{ created_at: "desc" }, { id: "asc" }],
+      select: { id: true, status: true, total_lkr: true, shipping_lkr: true, customer: true,
+        created_at: true, order_items: { select: { name: true, price_lkr: true } } },
+    })
+    : section === "inbox" ? await db.inboxMessage.findMany({ ...paging, orderBy: [{ created_at: "desc" }, { id: "asc" }] })
+    : []
+  const rows = records.slice(0, pageSize)
 
   return <div className="admin-workspace">
     <div className="admin-titlebar">
@@ -150,7 +146,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
               {row.is_published && categoryNames.get(row.gem_type)?.is_visible !== false && <Link className="admin-text-link" href={"/shop/" + row.slug}>View listing</Link>}
               {row.is_published && categoryNames.get(row.gem_type)?.is_visible === false && <Link className="admin-text-link" href={nav("filters") + "#filter-type"}>Manage gem type</Link>}
             </div>
-            {inventoryReady && row.status === "available" && <details className="admin-delete">
+            {row.status === "available" && <details className="admin-delete">
               <summary>Delete listing</summary>
               <form action={deleteProduct.bind(null, row.id)} className="mt-3 grid gap-2">
                 <p>Remove {row.name} from the shop and inventory. Existing order records are kept.</p>
@@ -182,9 +178,9 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
           </li>
         })}
       </ul>}
-    {(page > 1 || response.data.length > pageSize) && <nav className="flex gap-3" aria-label="Admin result pages">
+    {(page > 1 || records.length > pageSize) && <nav className="flex gap-3" aria-label="Admin result pages">
       {page > 1 && <Link className="admin-button" href={nav(section, page - 1, status)} prefetch={false}>Previous page</Link>}
-      {page < 10000 && response.data.length > pageSize && <Link className="admin-button" href={nav(section, page + 1, status)} prefetch={false}>Next page</Link>}
+      {page < 10000 && records.length > pageSize && <Link className="admin-button" href={nav(section, page + 1, status)} prefetch={false}>Next page</Link>}
     </nav>}
     </section>
   </div>

@@ -88,6 +88,15 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page.getByRole("button", { name: "Open cart, 1 stones" })).toBeVisible()
   await page.goto(base + listing)
   await expect(page.getByRole("button", { name: "Unavailable" })).toBeDisabled()
+  const sold = await request.post("/api/checkout", {
+    headers: { origin: canonicalOrigin },
+    data: {
+      ids: ["fd9f8831-e604-48cc-9d2c-79860244d258"], requestId: randomUUID(),
+      first_name: "Second", last_name: "Buyer", email: "second@example.test",
+      phone: "+94 77 123 4567", address: "15 Example Road", city: "Colombo",
+    },
+  })
+  expect(sold.status()).toBe(409)
 
   const contact = await request.post("/api/contact", { data: {
     name: "Test Visitor", email: "contact@example.test", subject: "A configured message", message: "Can you tell me more about this stone?",
@@ -114,7 +123,7 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page).toHaveURL(/\/admin$/)
   await expect(page.getByRole("heading", { name: "Store admin" })).toBeVisible()
   await expect(page.locator(".site-footer")).toHaveCount(0)
-  expect((await page.context().cookies()).some((cookie) => cookie.name.includes("auth-token") && cookie.httpOnly && cookie.sameSite === "Lax")).toBe(true)
+  expect((await page.context().cookies()).some((cookie) => cookie.name === "vault_admin_session" && cookie.httpOnly && cookie.sameSite === "Lax" && cookie.path === "/admin")).toBe(true)
   const authenticated = await page.request.get("/admin")
   expect(authenticated.headers()["cache-control"]).toContain("no-store")
   expect(authenticated.headers()["content-security-policy"]).toContain("frame-ancestors 'none'")
@@ -254,6 +263,8 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page).toHaveURL(/\/admin\/login$/)
   await login(page, "admin")
   await expect(page).toHaveURL(/\/admin$/)
+  const session = (await page.context().cookies()).find(cookie => cookie.name === "vault_admin_session")
+  if (!session) throw new Error("Admin session cookie is missing")
   await page.getByRole("link", { name: "vault-fixture-admin@example.test" }).click()
   for (const current of ["incorrect-password", adminPassword]) {
     await page.getByLabel("Current password").fill(current)
@@ -263,8 +274,38 @@ test("configured checkout, webhook verification, durable messages and admin fulf
     if (current !== adminPassword) await expect(page.getByRole("main").getByRole("alert")).toContainText("could not be verified")
   }
   await expect(page.getByRole("status")).toContainText("Password changed")
+  const staleBrowser = await page.context().browser()!.newContext({ baseURL })
+  try {
+    await staleBrowser.addCookies([session])
+    const stalePage = await staleBrowser.newPage()
+    await stalePage.goto("/admin")
+    await expect(stalePage).toHaveURL(/\/admin\/login$/)
+    await expect(stalePage.getByRole("heading", { name: "Store admin" })).toHaveCount(0)
+  } finally {
+    await staleBrowser.close()
+  }
   await login(page, "admin")
   await expect(page.getByRole("main").getByRole("alert")).toContainText("did not grant admin access")
   await login(page, "admin", "changed-fixture-passphrase")
   await expect(page.getByRole("heading", { name: "Store admin" })).toBeVisible()
+})
+
+test("a slow product navigation shows loading feedback", async ({ page }) => {
+  await page.goto("/shop")
+  const card = page.getByRole("link").filter({ has: page.getByRole("heading", { name: "Fixture Sapphire" }) })
+  await expect(card).toBeVisible()
+  let release: () => void = () => {}
+  const held = new Promise<void>(resolve => { release = resolve })
+  await page.route(url => url.pathname === listing, async route => {
+    await held
+    await route.continue()
+  })
+  const click = card.click()
+  try {
+    await expect(card.getByRole("status")).toHaveText("Loading page…")
+  } finally {
+    release()
+  }
+  await click
+  await expect(page.getByRole("heading", { name: "Fixture Sapphire", level: 1 })).toBeVisible()
 })

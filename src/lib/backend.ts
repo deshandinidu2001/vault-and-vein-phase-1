@@ -1,35 +1,19 @@
 import "server-only"
-import { createClient } from "@supabase/supabase-js"
+import { PrismaPg } from "@prisma/adapter-pg"
+import { PrismaClient } from "@/generated/prisma/client"
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const service = process.env.SUPABASE_SERVICE_ROLE_KEY
-export const catalogueConfigured = Boolean(url && anon)
-export const backendConfigured = Boolean(url && anon && service)
+const url = process.env.DATABASE_URL
+export const backendConfigured = Boolean(url)
+export const catalogueConfigured = backendConfigured
+export const publicSettingsTag = "public-shop-settings"
 
 export class CatalogueUnavailableError extends Error {}
 
-function connect(key: string, request?: typeof fetch) {
-  if (!url) throw new Error("Supabase URL is missing")
-  return createClient(url, key, { global: { fetch: request }, auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } })
-}
+const globalDatabase = globalThis as typeof globalThis & { vaultDatabase?: PrismaClient }
 
-export function publicDatabase() {
-  if (!anon) throw new Error("Supabase publishable key is missing")
-  return connect(anon)
-}
-
-export function serviceDatabase() {
-  if (!backendConfigured || !service) throw new Error("Supabase backend is not configured")
-  return connect(service)
-}
-
-export const publicSettingsTag = "public-shop-settings"
-
-// Only public category labels and filter settings use this shared cache.
-export function publicSettingsDatabase() {
-  if (!anon) throw new Error("Supabase publishable key is missing")
-  return connect(anon, (input, init) => fetch(input, {
-    ...init, cache: "force-cache", next: { revalidate: 60, tags: [publicSettingsTag] },
-  }))
+export function database() {
+  if (!url) throw new Error("DATABASE_URL is required")
+  return globalDatabase.vaultDatabase ??= new PrismaClient({
+    adapter: new PrismaPg({ connectionString: url, max: 5, connectionTimeoutMillis: 8000 }),
+  })
 }

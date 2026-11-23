@@ -22,6 +22,6 @@ export default async function AdminLogin({ searchParams }: PageProps<"/admin/log
       </label>
       {error && <p role="alert">{error}</p>}
       <button className="admin-button admin-button-primary w-fit" type="submit">Sign in</button>
-    </form> : <p>Store admin is unavailable until Supabase is configured.</p>}
+    </form> : <p>Store admin is unavailable until the database is configured.</p>}
   </section>
 }
