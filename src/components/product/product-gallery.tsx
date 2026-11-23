@@ -14,7 +14,7 @@ export function ProductGallery({ stone, extraPhotos }: { stone: Stone; extraPhot
 
   return <figure className="grid min-w-0 gap-4">
     <div className="stone-art product-feature-image">
-      <StoneMedia stone={{ ...stone, image_url: photo }} label={label} sizes="(min-width: 768px) 52vw, 95vw" width={1500} eager />
+      <StoneMedia stone={{ ...stone, image_url: photo }} label={label} sizes="(min-width: 1400px) 665px, (min-width: 768px) 52vw, 95vw" width={1500} eager />
     </div>
     {photos.length > 1 && <figcaption className="grid gap-2">
       <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">

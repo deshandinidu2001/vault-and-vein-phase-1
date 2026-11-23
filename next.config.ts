@@ -13,9 +13,10 @@ const nextConfig: NextConfig = {
     const publicPolicy = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline'" + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
+      "script-src-attr 'none'",
       "style-src 'self' 'unsafe-inline'", "img-src 'self' data: blob: https://res.cloudinary.com",
-      "frame-src https://maps.google.com https://www.google.com", "frame-ancestors 'none'",
-      "form-action 'self' https://sandbox.payhere.lk https://www.payhere.lk",
+      "frame-src 'none'", "frame-ancestors 'none'",
+      "form-action 'self'",
       "base-uri 'none'", "object-src 'none'",
     ].join("; ");
     return [

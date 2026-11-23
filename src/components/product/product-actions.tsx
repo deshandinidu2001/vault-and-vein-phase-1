@@ -1,14 +1,12 @@
 "use client"
 
 import { Check, CreditCard, ShoppingBag } from "lucide-react"
-import { useRouter } from "next/navigation"
 import { EnquireButton } from "@/components/layout/enquire-button"
 import { useCart } from "@/store/cart"
 import { toast } from "sonner"
 import type { Stone } from "@/types/stone"
 
 export function ProductActions({ stone, paymentsEnabled }: { stone: Stone; paymentsEnabled: boolean }) {
-  const router = useRouter()
   const alreadyInCart = useCart((state) => state.items.some(({ id }) => id === stone.id))
   const add = useCart((state) => state.add)
   const canBuy = paymentsEnabled && stone.status === "available" && stone.is_sample === false
@@ -30,7 +28,9 @@ export function ProductActions({ stone, paymentsEnabled }: { stone: Stone; payme
         <p className="text-sm text-muted-foreground">{canBuy ? "Review delivery and pay in LKR through PayHere." : "Online payment is currently unavailable. Ask us about this stone."}</p>
         <button type="button" className="pill pill-primary w-fit" disabled={!canBuy} onClick={() => {
           add(stone)
-          router.push("/checkout?" + new URLSearchParams({ item: stone.id }))
+          // Checkout needs a fresh document for its per-request script policy.
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+          window.location.assign("/checkout?" + new URLSearchParams({ item: stone.id }))
         }}>Buy now</button>
       </section>
     )}

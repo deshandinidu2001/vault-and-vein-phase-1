@@ -1,7 +1,7 @@
 import "server-only"
 import { connection } from "next/server"
 import { cache } from "react"
-import { catalogueConfigured, publicDatabase } from "./backend"
+import { catalogueConfigured, publicSettingsDatabase, type publicDatabase } from "./backend"
 import { isMissingInventorySchema } from "./gem-categories"
 import type { ShopFilterRow } from "./shop-filter-config"
 
@@ -21,5 +21,5 @@ export async function readShopFilterSettings(db: ReturnType<typeof publicDatabas
 export const getShopFilterSettings = cache(async () => {
   if (!catalogueConfigured) return { rows: [], ready: false }
   await connection()
-  return readShopFilterSettings(publicDatabase())
+  return readShopFilterSettings(publicSettingsDatabase())
 })

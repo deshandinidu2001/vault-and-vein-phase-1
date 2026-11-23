@@ -36,8 +36,8 @@ export function CartSheet({ paymentsEnabled }: { paymentsEnabled: boolean }) {
                 <Link href={"/shop/" + item.slug} onClick={closeOverlay} className="flex min-h-11 items-center font-semibold hover:underline">{item.name}</Link>
                 <p className="text-sm text-muted-foreground">{item.carat} ct · <StonePrice lkr={item.price_lkr} /></p>
                 {item.is_sample === false && items.length > 1 && paymentsEnabled && (
-                  <Link href={{ pathname: "/checkout", query: { item: item.id } }} onClick={closeOverlay}
-                    className="line-link text-sm" aria-label={"Pay for this stone: " + item.name}>Pay for this stone <ArrowUpRight size={15} aria-hidden="true" /></Link>
+                  <a href={"/checkout?" + new URLSearchParams({ item: item.id })}
+                    className="line-link text-sm" aria-label={"Pay for this stone: " + item.name}>Pay for this stone <ArrowUpRight size={15} aria-hidden="true" /></a>
                 )}
               </div>
               <button type="button" className="icon-button size-11!" aria-label={"Remove " + item.name} onClick={() => remove(item.id)}>
@@ -56,7 +56,8 @@ export function CartSheet({ paymentsEnabled }: { paymentsEnabled: boolean }) {
                     : "Review delivery and pay in LKR through PayHere."}
             </p>
             {canCheckout
-              ? <Link href="/checkout" className="pill pill-primary" onClick={closeOverlay}>Go to checkout</Link>
+              // Load checkout as a new document to install its security policy.
+              ? <a href="/checkout" className="pill pill-primary">Go to checkout</a>
               : <button type="button" className="pill pill-primary" disabled>Go to checkout</button>}
           </section>
           <button type="button" className="pill" onClick={() => openEnquiry(items)}>{items.length === 1 ? "Ask about this stone" : "Ask about these stones"}</button>

@@ -16,7 +16,7 @@ async function login(page: Page, role: "visitor" | "admin", password = adminPass
   await page.getByRole("button", { name: "Sign in" }).click()
 }
 
-test("configured checkout, webhook verification, durable messages and admin fulfillment", async ({ page, request }) => {
+test("configured checkout, webhook verification, durable messages and admin fulfillment", async ({ page, request, baseURL }) => {
   await page.route("https://res.cloudinary.com/vault-fixture/**", (route) => route.fulfill({ contentType: "image/png", body: samplePhoto.buffer }))
   await page.goto("/shop/fixture-sample")
   await page.getByRole("button", { name: "Add to Cart" }).click()
@@ -27,7 +27,9 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page.getByRole("link", { name: "Go to checkout" })).toBeVisible()
   await expect(page.getByRole("link", { name: "Pay for this stone: Fixture Sapphire" })).toBeVisible()
   await page.goto(listing)
+  const checkoutDocument = page.waitForResponse(response => response.request().isNavigationRequest() && new URL(response.url()).pathname === "/checkout")
   await page.getByRole("button", { name: "Buy now" }).click()
+  expect((await checkoutDocument).headers()["content-security-policy"]).toContain("'nonce-")
   await expect(page).toHaveURL(/\/checkout\?item=/)
   await expect(page.getByRole("heading", { name: "Checkout" })).toBeVisible()
   await expect(page.getByText("Fixture Sample", { exact: true })).toHaveCount(0)
@@ -66,11 +68,12 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   const secret = md5("fixture-merchant-secret")
   expect(fields.get("hash")).toBe(md5("000000" + orderId + amount + "LKR" + secret))
 
-  const base = "http://127.0.0.1:3211"
+  const base = baseURL!
   await page.goto(base + returnPath)
   await expect(page.getByText(/waiting for confirmation/)).toBeVisible()
   const receiptHeaders = (await request.get(returnPath)).headers()
   expect(receiptHeaders["referrer-policy"]).toBe("no-referrer")
+  expect(receiptHeaders["content-security-policy"]).toContain("'nonce-")
   expect(receiptHeaders["cache-control"]).toContain("no-store")
   expect((await request.get("/order/" + orderId + "?key=" + randomUUID())).status()).toBe(404)
   const notify = {
@@ -168,6 +171,8 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page.getByText("Listing saved.")).toBeVisible()
   const newListing = page.getByRole("listitem").filter({ hasText: "Test Spinel" })
   await expect(newListing.locator("img")).toHaveAttribute("src", /res\.cloudinary\.com\/vault-fixture\/image\/upload\//)
+  await expect(newListing.locator("img")).toHaveAttribute("sizes", "70px")
+  await expect(newListing.locator("img")).toHaveAttribute("srcset", /w_96,.* 96w/)
   await expect(newListing.getByText(/Draft/)).toBeVisible()
   const unpublished = await request.get("/shop/test-spinel")
   expect(unpublished.status()).toBe(404)

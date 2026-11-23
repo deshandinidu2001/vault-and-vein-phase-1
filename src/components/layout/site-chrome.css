@@ -143,7 +143,11 @@
     opacity: calc(1 - .28 * var(--footer-rise, 0));
   }
   .site-footer[data-reveal-sticky] { position: sticky; bottom: 0; }
-  .footer-wordmark[data-fill-active] .footer-wordmark-fill { transition: clip-path 1.2s ease-in-out; }
+  .footer-wordmark-fill { transition: clip-path 1.2s ease-in-out; }
+}
+
+@media (prefers-reduced-motion: no-preference) and (scripting: enabled) {
+  .site-footer { --footer-fill: 0%; }
 }
 
 @keyframes store-page-enter { from { opacity: .55; } to { opacity: 1; } }

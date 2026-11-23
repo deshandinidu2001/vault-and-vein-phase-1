@@ -8,16 +8,27 @@ import { FinalCall } from "@/components/home/final-call"
 import { GemGallery } from "@/components/home/gem-gallery"
 import { HeroSlider } from "@/components/home/hero-slider"
 import { Suspense } from "react"
+import Link from "next/link"
 
 import { getFeatured } from "@/lib/data"
 import { getGemCategories } from "@/lib/gem-categories"
+import { CatalogueUnavailableError } from "@/lib/backend"
 import { pageMetadata } from "@/lib/seo"
 import { site } from "@/config/site"
 
 export const metadata = pageMetadata(site.tagline, site.description, "/")
 
 async function FeaturedGallery() {
-  const [stones, { categories }] = await Promise.all([getFeatured(), getGemCategories()])
+  const result = await Promise.all([getFeatured(), getGemCategories()]).catch(error => {
+    if (!(error instanceof CatalogueUnavailableError)) throw error
+    console.warn("The featured gemstone gallery is temporarily unavailable.")
+    return null
+  })
+  if (!result) return <section id="gallery" className="section dark-panel"><div className="wrap space-y-4">
+      <h2>The gem gallery</h2><p>We couldn’t load the featured stones.</p>
+      <Link href="/shop" className="pill pill-gold">Explore the shop</Link>
+    </div></section>
+  const [stones, { categories }] = result
   return <GemGallery stones={stones} categoryLabels={Object.fromEntries(categories.map(({ slug, name }) => [slug, name]))} />
 }
 

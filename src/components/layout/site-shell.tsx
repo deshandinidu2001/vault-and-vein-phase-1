@@ -7,12 +7,17 @@ import { Toaster } from "sonner"
 import { checkoutConfig } from "@/lib/checkout"
 import { getGemCategories } from "@/lib/gem-categories"
 import { gemLinks } from "@/config/site"
+import { CatalogueUnavailableError } from "@/lib/backend"
 
 async function Footer() {
-  const { categories } = await getGemCategories()
-  const shown = new Set(categories.map(({ slug }) => slug))
-  const shopLinks = gemLinks.filter(({ category }) => !category || shown.has(category))
-  return <SiteFooter shopLinks={shopLinks} />
+  const result = await getGemCategories().catch(error => {
+    if (!(error instanceof CatalogueUnavailableError)) throw error
+    console.warn("Footer category links are temporarily unavailable.")
+    return null
+  })
+  if (!result) return <SiteFooter shopLinks={[{ href: "/shop", label: "Browse the shop" }]} />
+  const shown = new Set(result.categories.map(({ slug }) => slug))
+  return <SiteFooter shopLinks={gemLinks.filter(({ category }) => !category || shown.has(category))} />
 }
 
 export function SiteShell({ children }: { children: React.ReactNode }) {

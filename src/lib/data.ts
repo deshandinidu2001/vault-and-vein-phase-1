@@ -3,7 +3,7 @@ import { mockStones } from "@/data/stones"
 import { stoneCategory, type Stone } from "@/types/stone"
 import { cache } from "react"
 import { connection } from "next/server"
-import { catalogueConfigured, publicDatabase } from "./backend"
+import { catalogueConfigured, CatalogueUnavailableError, publicDatabase } from "./backend"
 import { getGemCategories, isMissingInventorySchema } from "./gem-categories"
 import { gemModelCut } from "@/components/three/gem-shape"
 import { normalizeShopOption, shopFilterConfig } from "./shop-filter-config"
@@ -11,9 +11,9 @@ import { getShopFilterSettings } from "./shop-filter-settings"
 import type { GemCategory } from "@/types/stone"
 
 const columns = "id,slug,name,gem_type,cut,carat,length_mm,width_mm,depth_mm,colour,clarity,treatment,origin,description,price_lkr,status,reserved_until,is_featured,is_sample,model_key,tint,certified,collections"
-type ProductRow = Omit<Stone, "model_key"> & { model_key: string; reserved_until: string | null }
+type ProductRow = Omit<Stone, "model_key"> & { model_key: string; reserved_until: string | null; gallery_urls?: string[] }
 
-function catalogueStone({ reserved_until, ...stone }: ProductRow, categoryNames: Map<string, string>): Stone {
+function catalogueStone({ reserved_until, ...stone }: ProductRow, categoryNames: Map<string, string>) {
   const expired = stone.status === "reserved" && reserved_until && Date.parse(reserved_until) <= Date.now()
   return { ...stone, status: expired ? "available" : stone.status, model_key: gemModelCut(stone.model_key), categoryName: categoryNames.get(stone.gem_type) }
 }
@@ -22,18 +22,24 @@ const loadCatalogue = cache(async (): Promise<Stone[]> => {
   if (!catalogueConfigured) return mockStones.map((stone) => ({ ...stone, is_sample: true }))
   await connection()
   const db = publicDatabase()
-  const { categories, visibilityReady } = await getGemCategories()
-  const categoryNames = new Map(categories.map(({ slug, name }) => [slug, name]))
-  const stones: Stone[] = []
-  for (let start = 0; ; start += 500) {
-    const { data, error } = await db.from("products")
-      .select(visibilityReady ? columns + ",image_url" : columns)
-      .eq("is_published", true).order("slug").range(start, start + 499)
+  const batch = 500
+  function fetchPage(start: number, includePhoto: boolean) {
+    return db.from("products")
+      .select(includePhoto ? columns + ",image_url" : columns)
+      .eq("is_published", true).order("slug").range(start, start + batch - 1)
       .overrideTypes<ProductRow[], { merge: false }>()
-    if (error) throw new Error("The catalogue is temporarily unavailable.")
-    const rows = data
-    stones.push(...rows.map(row => catalogueStone(row, categoryNames)))
-    if (rows.length < 500) return stones
+  }
+  const [first, { categories }] = await Promise.all([fetchPage(0, true), getGemCategories()])
+  const categoryNames = new Map(categories.map(({ slug, name }) => [slug, name]))
+  const includePhoto = !isMissingInventorySchema(first.error)
+  let page = includePhoto ? first : await fetchPage(0, false)
+  const stones: Stone[] = []
+  for (let start = batch; ; start += batch) {
+    const { data, error } = page
+    if (error) throw new CatalogueUnavailableError("The catalogue is temporarily unavailable.")
+    stones.push(...data.map(row => catalogueStone(row, categoryNames)))
+    if (data.length < batch) return stones
+    page = await fetchPage(start, includePhoto)
   }
 })
 
@@ -99,31 +105,30 @@ export async function getStones(filters: StoneFilters = {}) {
 async function selectPreview(limit: number, slug?: string) {
   await connection()
   const db = publicDatabase()
-  function fetchRows(includePhoto: boolean) {
-    const query = db.from("products").select(includePhoto ? columns + ",image_url" : columns).eq("is_published", true)
+  function fetchRows(extraColumns: string) {
+    const query = db.from("products").select(columns + extraColumns).eq("is_published", true)
     if (slug !== undefined) query.eq("slug", slug)
     return query.order("is_featured", { ascending: false }).order("slug").limit(limit)
       .overrideTypes<ProductRow[], { merge: false }>()
   }
-  const [initial, { categories }] = await Promise.all([fetchRows(true), getGemCategories()])
-  const { data, error } = isMissingInventorySchema(initial.error) ? await fetchRows(false) : initial
-  if (error) throw new Error("The catalogue is temporarily unavailable.")
+  const [initial, { categories }] = await Promise.all([
+    fetchRows(slug === undefined ? ",image_url" : ",image_url,gallery_urls"), getGemCategories(),
+  ])
+  // Older catalogues may have a cover photo but no gallery column yet.
+  const withCover = slug !== undefined && isMissingInventorySchema(initial.error) ? await fetchRows(",image_url") : initial
+  const { data, error } = isMissingInventorySchema(withCover.error) ? await fetchRows("") : withCover
+  if (error) throw new CatalogueUnavailableError("The catalogue is temporarily unavailable.")
   const names = new Map(categories.map(({ slug, name }) => [slug, name]))
   return data.map(row => catalogueStone(row, names))
 }
 
 export const getStoneBySlug = cache(async (slug: string) => {
-  if (!catalogueConfigured) return (await loadCatalogue()).find(stone => stone.slug === slug)
+  if (!catalogueConfigured) {
+    const stone = (await loadCatalogue()).find(stone => stone.slug === slug)
+    return stone && { ...stone, gallery_urls: [] as string[] }
+  }
   return (await selectPreview(1, slug))[0]
 })
-
-export async function getStoneGallery(id: string): Promise<string[]> {
-  if (!catalogueConfigured) return []
-  const { data, error } = await publicDatabase().from("products").select("gallery_urls").eq("id", id).maybeSingle()
-  if (isMissingInventorySchema(error)) return []
-  if (error) throw new Error("Could not load the product gallery")
-  return data?.gallery_urls ?? []
-}
 
 export async function getFeatured(limit = 8) {
   if (catalogueConfigured) return selectPreview(limit)

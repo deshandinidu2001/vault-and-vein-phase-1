@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test"
+import { configuredPort, localUrl } from "./tests/support/ports.mjs"
 
 export default defineConfig({
   testDir: "./tests",
@@ -7,10 +8,10 @@ export default defineConfig({
   timeout: 90_000,
   workers: 1,
   reporter: "list",
-  use: { ...devices["Desktop Chrome"], baseURL: "http://127.0.0.1:3211", trace: "retain-on-failure" },
+  use: { ...devices["Desktop Chrome"], baseURL: localUrl(configuredPort), trace: "retain-on-failure" },
   webServer: {
     command: "node tests/support/backend-fixture.mjs",
-    url: "http://127.0.0.1:3211",
+    url: localUrl(configuredPort),
     timeout: 180_000,
   },
 })

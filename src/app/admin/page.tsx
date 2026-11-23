@@ -69,13 +69,13 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   }
   const result = typeof query.result === "string" && Object.hasOwn(results, query.result) ? results[query.result as keyof typeof results] : null
 
-  const { categories, inventoryReady, visibilityReady } = await readGemCategories(db)
+  const [{ categories, inventoryReady, visibilityReady }, expiry] = await Promise.all([
+    section === "inventory" || section === "filters" ? readGemCategories(db) : { categories: [], inventoryReady: false, visibilityReady: false },
+    section === "inventory" || section === "orders" ? db.rpc("expire_checkouts") : null,
+  ])
+  if (expiry?.error) throw new Error("Could not refresh reservations")
   const categoryNames = new Map(categories.map((category) => [category.slug, category]))
   const payment = section === "orders" ? checkoutConfig() : null
-  if (section === "inventory" || section === "orders") {
-    const { error } = await db.rpc("expire_checkouts")
-    if (error) throw new Error("Could not refresh reservations")
-  }
 
   const productColumns = "id,slug,name,gem_type,status,price_lkr,is_published,is_sample,cut,tint"
   const products = db.from("products").select(visibilityReady ? productColumns + ",image_url" : productColumns)

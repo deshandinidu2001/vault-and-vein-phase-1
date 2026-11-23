@@ -38,7 +38,6 @@ export function SiteFooter({ shopLinks }: { shopLinks: { href: string; label: st
       const fillDistance = Math.max(1, Math.min(112, availableScroll - leadIn))
       const atEnd = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2
       const progress = atEnd ? 1 : (distanceAfterReveal - leadIn) / fillDistance
-      mark.toggleAttribute("data-fill-active", progress > 0)
       mark.style.setProperty("--footer-fill", (Math.min(1, Math.max(0, progress)) * 100).toFixed(2) + "%")
       const revealed = (window.innerHeight - surfaceBottom) / Math.max(1, Math.min(window.innerHeight * .85, footerBox.height))
       element.style.setProperty("--footer-rise", String(1 - Math.max(0, Math.min(1, revealed))))
@@ -75,7 +74,6 @@ export function SiteFooter({ shopLinks }: { shopLinks: { href: string; label: st
       cancelAnimationFrame(frame)
       element.removeAttribute("data-reveal-sticky")
       element.style.removeProperty("--footer-rise")
-      mark.removeAttribute("data-fill-active")
       mark.style.removeProperty("--footer-fill")
     }
   }, [animate, path])

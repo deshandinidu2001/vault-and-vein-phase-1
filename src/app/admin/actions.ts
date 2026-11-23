@@ -2,11 +2,11 @@
 
 import { randomUUID } from "node:crypto"
 import { headers } from "next/headers"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 import { adminSession, hasAdminAccess, requireAdminDatabase } from "@/lib/admin-auth"
-import { backendConfigured } from "@/lib/backend"
+import { backendConfigured, publicSettingsTag } from "@/lib/backend"
 import { productFlags, productInput, slugInput } from "@/lib/admin-product"
 import { isMissingInventorySchema, readGemCategories } from "@/lib/gem-categories"
 import { discardProductPhoto, uploadProductPhoto } from "@/lib/cloudinary"
@@ -184,12 +184,17 @@ export async function deleteProduct(id: string) {
 
 const filtersUrl = "/admin?view=filters&result="
 
+function refreshShopSettings() {
+  updateTag(publicSettingsTag)
+  refreshCatalogue()
+}
+
 export async function setCategoryVisibility(slug: string, visible: boolean) {
   const db = await requireAdminDatabase()
   const key = slugInput.safeParse(slug)
   if (!key.success || typeof visible !== "boolean") redirect(filtersUrl + "unavailable")
   const { data, error } = await db.from("gem_categories").update({ is_visible: visible }).eq("slug", key.data).select("slug").maybeSingle()
-  if (!error && data) refreshCatalogue()
+  if (!error && data) refreshShopSettings()
   redirect(filtersUrl + (isMissingInventorySchema(error) ? "migration" : error || !data ? "unavailable" : "category-saved"))
 }
 
@@ -200,7 +205,7 @@ export async function addGemType(form: FormData) {
   const slug = slugInput.safeParse(customShopOption("type", name.data))
   if (!slug.success) redirect(filtersUrl + "filter-invalid")
   const { error } = await db.from("gem_categories").insert({ slug: slug.data, name: name.data })
-  if (!error) refreshCatalogue()
+  if (!error) refreshShopSettings()
   redirect(filtersUrl + (error?.code === "23505" ? "filter-duplicate"
     : error?.code === "42501" || isMissingInventorySchema(error) ? "gallery-migration"
       : error ? "unavailable" : "gem-type-added"))
@@ -232,7 +237,7 @@ export async function setShopFilterVisibility(key: string, value: string, visibl
       .select("filter_key").maybeSingle()
     if (result.error?.code === "23505") result = await saveVisibility()
   }
-  if (!result.error && result.data) refreshCatalogue()
+  if (!result.error && result.data) refreshShopSettings()
   redirect(filtersUrl + (isMissingInventorySchema(result.error) ? "filter-migration" : result.error || !result.data ? "unavailable" : "filter-saved"))
 }
 
@@ -249,7 +254,7 @@ export async function addShopFilterOption(key: string, form: FormData) {
   if (!ready) redirect(filtersUrl + "filter-migration")
   if (options[optionKey].some((option) => option.value === value)) redirect(filtersUrl + "filter-duplicate")
   const { error } = await db.from("shop_filter_settings").insert({ filter_key: optionKey, value, label: label.data })
-  if (!error) refreshCatalogue()
+  if (!error) refreshShopSettings()
   redirect(filtersUrl + (error?.code === "23505" ? "filter-duplicate" : error ? "unavailable" : "filter-added"))
 }
 

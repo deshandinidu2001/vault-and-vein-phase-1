@@ -65,7 +65,7 @@ export function CheckoutForm({ shipping, sandbox, itemId }: { shipping: number; 
         {Object.entries(prepared.fields).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}
         <button className="pill pill-primary" type="submit">Continue to {sandbox ? "PayHere sandbox" : "PayHere"}</button>
       </form>
-      <Link href={new URL(prepared.fields.return_url).pathname + new URL(prepared.fields.return_url).search} className="line-link">View order status</Link>
+      <a href={new URL(prepared.fields.return_url).pathname + new URL(prepared.fields.return_url).search} className="line-link">View order status</a>
     </div>
   }
 

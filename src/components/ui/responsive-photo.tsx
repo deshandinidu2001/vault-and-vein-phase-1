@@ -22,11 +22,11 @@ export function ResponsivePhoto({
       "--photo-mobile-crop": photo.mobileOrigin,
     } as CSSProperties,
   }
-  const { props: mobile } = getImageProps({ ...shared, src: photo.srcMobile })
   const { props: desktop } = getImageProps({ ...shared, src: photo.src })
+  const mobile = photo.srcMobile !== photo.src ? getImageProps({ ...shared, src: photo.srcMobile }).props : null
   return (
     <picture>
-      <source media="(max-width: 639px)" srcSet={mobile.srcSet} sizes={sizes} />
+      {mobile && <source media="(max-width: 639px)" srcSet={mobile.srcSet} sizes={sizes} />}
       {/* getImageProps provides Next's optimized sources to the art-directed picture. */}
       <img {...desktop} alt={photo.alt} className={photo.mobileOrigin ? "photo-with-mobile-crop" : undefined} />
     </picture>

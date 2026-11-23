@@ -1,15 +1,17 @@
 "use client"
 
 import Image from "next/image"
+import dynamic from "next/dynamic"
 import { NavigationLink } from "./navigation-link"
 import { usePathname } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { ArrowUpRight, Menu, ShoppingBag } from "lucide-react"
 import { useCart } from "@/store/cart"
 import { navigation } from "@/config/site"
-import { useUi, restoreOverlayFocus } from "@/store/ui"
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
+import { useUi } from "@/store/ui"
 import { EnquireButton } from "./enquire-button"
+
+const MobileMenu = dynamic(() => import("./mobile-menu"))
 
 export function BrandBadge({ size = 40 }: { size?: number }) {
   return <span className="grid shrink-0 place-items-center overflow-hidden rounded-full" style={{ width: size, height: size }}>
@@ -20,7 +22,7 @@ export function BrandBadge({ size = 40 }: { size?: number }) {
 export function SiteHeader() {
   const count = useCart((state) => state.items.length)
   const path = usePathname()
-  const { overlay, openMenu, openCart, closeOverlay, currency, toggleCurrency } = useUi()
+  const { overlay, menuOpened, openMenu, openCart, currency, toggleCurrency } = useUi()
   const [compact, setCompact] = useState(false)
   const progress = useRef<HTMLDivElement>(null)
   const active = (href: string) => href === "/" ? path === "/" : path === href || path.startsWith(href + "/")
@@ -66,19 +68,6 @@ export function SiteHeader() {
         <div className="header-progress" aria-hidden="true"><div ref={progress} /></div>
       </div>
     </header>
-    <Sheet open={overlay === "menu"} onOpenChange={(open) => { if (!open && useUi.getState().overlay === "menu") closeOverlay() }}>
-      <SheetContent side="top" onCloseAutoFocus={restoreOverlayFocus} className="mobile-nav-sheet">
-        <SheetTitle className="pl-3 pt-1 font-display text-2xl">Menu</SheetTitle>
-        <SheetDescription className="sr-only">Navigate Vault &amp; Vein.</SheetDescription>
-        <nav className="grid gap-1" aria-label="Mobile navigation">
-          {navigation.map(({ href, label }, index) =>
-            <NavigationLink key={href} href={href} onClick={closeOverlay} style={{ animationDelay: index * 65 + "ms" }}
-              aria-current={active(href) ? "page" : undefined} className="mobile-nav-link">{label}</NavigationLink>)}
-        </nav>
-        <EnquireButton className="pill-primary">
-          Ask <ArrowUpRight size={16} aria-hidden="true" />
-        </EnquireButton>
-      </SheetContent>
-    </Sheet>
+    {menuOpened && <MobileMenu path={path} />}
   </>
 }

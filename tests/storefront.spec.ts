@@ -167,6 +167,7 @@ test("contact validation and submission, admin guard and safe preview checkout",
   expect((await request.post("/api/checkout", { data: {} })).status()).toBe(503)
   expect((await request.post("/api/payhere/notify", { form: {} })).status()).toBe(503)
   for (const route of ["/api/contact", "/api/enquiry"]) {
+    expect((await request.post(route, { headers: { "sec-fetch-site": "cross-site" }, data: {} })).status()).toBe(403)
     expect((await request.post(route, { data: {} })).status()).toBe(400)
   }
   expect((await request.get("/order/7a13082e-18aa-4a07-8300-8d617943aef3")).status()).toBe(404)
@@ -187,6 +188,9 @@ async function scrollPastWordmarkReveal(page: Page, offset: number) {
 test("footer wordmark fills after it is fully revealed across public pages", async ({ page }) => {
   for (const route of routes) {
     await page.goto(route)
+    // Catalogue results stream after the page shell and change the footer's position.
+    if (route === "/shop") await expect(page.locator("#results .stone-card").first()).toBeVisible()
+    if (route === product) await expect(page.getByRole("heading", { name: "Related stones" })).toBeVisible()
     const wordmark = page.locator(".footer-wordmark")
     await expect(wordmark).toBeAttached()
     await page.evaluate(() => document.fonts.ready)

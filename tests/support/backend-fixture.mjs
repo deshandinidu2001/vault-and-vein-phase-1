@@ -2,6 +2,7 @@ import { spawn } from "node:child_process"
 import { createServer } from "node:http"
 import { readFile } from "node:fs/promises"
 import { PGlite } from "@electric-sql/pglite"
+import { configuredPort, databasePort, localUrl } from "./ports.mjs"
 
 const db = new PGlite()
 const admin = "64844972-2262-4674-b01b-882fd9a127fb"
@@ -11,7 +12,7 @@ const service = "fixture-service-key"
 const anonymous = "fixture-anon-key"
 const emailPrefix = "vault-fixture"
 let fixturePassword = "fixture-password"
-const api = "http://127.0.0.1:3212"
+const api = localUrl(databasePort)
 const productFields = ["slug", "name", "gem_type", "cut", "carat", "length_mm", "width_mm", "depth_mm", "colour", "clarity",
   "treatment", "origin", "description", "price_lkr", "tint", "certified", "is_featured", "is_published", "is_sample", "collections"]
 
@@ -178,9 +179,9 @@ const server = createServer(async (request, response) => {
     send(["P0001", "23505", "23503"].includes(error.code) ? 400 : 500, { code: error.code, message: error.message })
   }
 })
-await new Promise((resolve) => server.listen(3212, "127.0.0.1", resolve))
+await new Promise((resolve) => server.listen(databasePort, "127.0.0.1", resolve))
 
-const child = spawn(process.execPath, ["./node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1", "--port", "3211"], {
+const child = spawn(process.execPath, ["./node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1", "--port", String(configuredPort)], {
   stdio: "inherit",
   env: {
     ...process.env, VAULT_VEIN_BROWSER_FIXTURE: "1", NEXT_PUBLIC_SITE_URL: "https://vault-fixture.example", NEXT_PUBLIC_SUPABASE_URL: api,

@@ -29,7 +29,7 @@ export function ShopFilters({ current, config }: { current: StoneFilters; config
       if (filter && !(key === "sort" && filter === "featured")) params.set(key, filter)
     })
     const query = params.toString()
-    startTransition(() => router.push(query ? "/shop?" + query : "/shop"))
+    startTransition(() => router.push(query ? "/shop?" + query : "/shop", { scroll: false }))
   }
 
   return <form action="/shop" method="get" onSubmit={apply} aria-busy={pending} className="grid gap-4 rounded-2xl border border-emerald/15 p-4 md:p-6">

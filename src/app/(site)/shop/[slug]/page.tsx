@@ -7,7 +7,7 @@ import { ProductGallery } from "@/components/product/product-gallery"
 import { StoneCard } from "@/components/shop/stone-card"
 import { StonePrice } from "@/components/shop/stone-price"
 import { Badge } from "@/components/ui/badge"
-import { getRelated, getStoneBySlug, getStoneGallery } from "@/lib/data"
+import { getRelated, getStoneBySlug } from "@/lib/data"
 import { stoneCategory, type Stone } from "@/types/stone"
 import { site } from "@/config/site"
 import { checkoutConfig } from "@/lib/checkout"
@@ -57,7 +57,6 @@ export default async function StoneDetail({ params }: Props) {
   const { slug } = await params
   const stone = await getStoneBySlug(slug)
   if (!stone) notFound()
-  const photos = await getStoneGallery(stone.id)
   const details = [
     ["Gem type", stoneCategory(stone)], ["Cut", stone.cut], ["Weight", stone.carat + " ct"],
     ["Dimensions", [stone.length_mm, stone.width_mm, stone.depth_mm].join(" × ") + " mm"],
@@ -69,7 +68,7 @@ export default async function StoneDetail({ params }: Props) {
     <ProductData stone={stone} />
     <Link href="/shop" className="line-link text-sm"><ArrowLeft size={18} aria-hidden="true" /> Back to the shop</Link>
     <div className="grid gap-7 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:gap-10 xl:gap-16">
-      <ProductGallery stone={stone} extraPhotos={photos} />
+      <ProductGallery stone={stone} extraPhotos={stone.gallery_urls ?? []} />
       <div className="grid min-w-0 content-start gap-6 md:pt-3">
         <div className="grid gap-4">
           <div className="flex flex-wrap items-center gap-3">

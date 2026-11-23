@@ -9,6 +9,10 @@ const enquiry = enquirySchema.extend({
 })
 
 export async function saveMessage(request: Request, kind: "contact" | "enquiry") {
+  const source = request.headers.get("sec-fetch-site")
+  if (source && source !== "same-origin") {
+    return Response.json({ message: "Send this message from the storefront." }, { status: 403 })
+  }
   const schema = kind === "contact" ? contactSchema : enquiry
   const parsed = schema.safeParse(await readJson(request))
   if (!parsed.success) return Response.json({ message: "Please check the form and try again." }, { status: 400 })

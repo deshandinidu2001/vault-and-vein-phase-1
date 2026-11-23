@@ -8,8 +8,8 @@ export type PhotoSlot = {
 }
 
 export const sapphirePhoto = {
-  src: "/images/hero/hero-01-sapphire.jpg",
-  srcMobile: "/images/hero/hero-01-sapphire-mobile.jpg",
+  src: "/images/hero/hero-01-sapphire.webp",
+  srcMobile: "/images/hero/hero-01-sapphire-mobile.webp",
   alt: "A faceted blue sapphire catching the light",
 }
 
@@ -33,24 +33,24 @@ export const photos = {
   collectionRare: { ...editorialPhotos.rarities, origin: "88% 50%", mobileOrigin: "91% 50%" },
   collectionParcels: { ...editorialPhotos.parcels, origin: "100% 52%", mobileOrigin: "94% 52%" },
   engagement: {
-    src: "/images/editorial/The engagement edit.jpg",
-    srcMobile: "/images/editorial/The engagement edit.jpg",
+    src: "/images/editorial/The engagement edit.webp",
+    srcMobile: "/images/editorial/The engagement edit.webp",
     alt: "A peach faceted gemstone beside a gold ring in warm light",
     origin: "51% 57%",
     mobileOrigin: "52% 57%",
     zoom: 1.09,
   },
   care: {
-    src: "/images/editorial/after the sale.jpg",
-    srcMobile: "/images/editorial/after the sale.jpg",
+    src: "/images/editorial/after the sale.webp",
+    srcMobile: "/images/editorial/after the sale.webp",
     alt: "A blue sapphire on a soft cloth beside an evergreen pouch",
     origin: "63% 51%",
     mobileOrigin: "82% 52%",
     zoom: 1,
   },
   closing: {
-    src: "/images/editorial/make time for a stone.jpg",
-    srcMobile: "/images/editorial/make time for a stone.jpg",
+    src: "/images/editorial/make time for a stone.webp",
+    srcMobile: "/images/editorial/make time for a stone.webp",
     alt: "",
     origin: "56% 51%",
     mobileOrigin: "73% 50%",

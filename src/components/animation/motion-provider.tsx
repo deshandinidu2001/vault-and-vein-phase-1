@@ -6,7 +6,7 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import "lenis/dist/lenis.css"
 
 export function MotionProvider({ children }: { children: ReactNode }) {
-  const animate = useMediaQuery("(prefers-reduced-motion: no-preference)")
+  const animate = useMediaQuery("(prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine)")
   useEffect(() => {
     if (!animate) return
     let active = true
