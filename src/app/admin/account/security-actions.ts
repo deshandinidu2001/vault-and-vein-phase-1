@@ -24,10 +24,10 @@ export async function changePassword(form: FormData) {
   if (!await permitPasswordChange(id)) redirect("/admin/account?result=limited")
   let updated: boolean
   try {
-    updated = await updateAdminPassword(id, current, password)
+    updated = await updateAdminPassword(current, password)
   } catch {
     redirect("/admin/account?result=failed")
   }
   if (!updated) redirect("/admin/account?result=denied")
-  redirect("/admin/login?result=changed")
+  redirect("/admin/account?result=changed")
 }

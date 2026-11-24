@@ -110,6 +110,7 @@ test("configured checkout, webhook verification, durable messages and admin fulf
 
   await login(page, "visitor")
   await expect(page.getByRole("main").getByRole("alert")).toHaveText("These credentials did not grant admin access.")
+  expect((await page.context().cookies()).some(cookie => cookie.name === "__Secure-neon-auth.session_token")).toBe(false)
   await page.goto("/admin/products/new")
   await expect(page).toHaveURL(/\/admin\/login$/)
   await expect(page.getByLabel("Upload photo")).toHaveCount(0)
@@ -123,7 +124,7 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page).toHaveURL(/\/admin$/)
   await expect(page.getByRole("heading", { name: "Store admin" })).toBeVisible()
   await expect(page.locator(".site-footer")).toHaveCount(0)
-  expect((await page.context().cookies()).some((cookie) => cookie.name === "vault_admin_session" && cookie.httpOnly && cookie.sameSite === "Lax" && cookie.path === "/admin")).toBe(true)
+  expect((await page.context().cookies()).some((cookie) => cookie.name === "__Secure-neon-auth.session_token" && cookie.httpOnly && cookie.sameSite === "Strict" && cookie.secure)).toBe(true)
   const authenticated = await page.request.get("/admin")
   expect(authenticated.headers()["cache-control"]).toContain("no-store")
   expect(authenticated.headers()["content-security-policy"]).toContain("frame-ancestors 'none'")
@@ -263,8 +264,10 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page).toHaveURL(/\/admin\/login$/)
   await login(page, "admin")
   await expect(page).toHaveURL(/\/admin$/)
-  const session = (await page.context().cookies()).find(cookie => cookie.name === "vault_admin_session")
-  if (!session) throw new Error("Admin session cookie is missing")
+  const priorCookies = (await page.context().cookies()).filter(cookie => cookie.name.startsWith("__Secure-neon-auth."))
+  expect(priorCookies.map(cookie => cookie.name)).toEqual(expect.arrayContaining([
+    "__Secure-neon-auth.session_token", "__Secure-neon-auth.local.session_data",
+  ]))
   await page.getByRole("link", { name: "vault-fixture-admin@example.test" }).click()
   for (const current of ["incorrect-password", adminPassword]) {
     await page.getByLabel("Current password").fill(current)
@@ -276,7 +279,7 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page.getByRole("status")).toContainText("Password changed")
   const staleBrowser = await page.context().browser()!.newContext({ baseURL })
   try {
-    await staleBrowser.addCookies([session])
+    await staleBrowser.addCookies(priorCookies)
     const stalePage = await staleBrowser.newPage()
     await stalePage.goto("/admin")
     await expect(stalePage).toHaveURL(/\/admin\/login$/)
@@ -284,6 +287,9 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   } finally {
     await staleBrowser.close()
   }
+  await page.getByRole("link", { name: "Back to inventory" }).click()
+  await page.getByRole("button", { name: "Sign out" }).click()
+  await expect(page).toHaveURL(/\/admin\/login$/)
   await login(page, "admin")
   await expect(page.getByRole("main").getByRole("alert")).toContainText("did not grant admin access")
   await login(page, "admin", "changed-fixture-passphrase")

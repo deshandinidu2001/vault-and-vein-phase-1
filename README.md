@@ -17,7 +17,16 @@ Open http://localhost:3000. Without a database, the store uses the 12 sample lis
 
 1. Create a Neon project or branch for this store. In the **Connect** dialog, copy the pooled connection string into `DATABASE_URL` and the direct connection string into `DIRECT_URL` in `.env.local`. Use the database owner when applying migrations. Set the pooled URL as a server-only environment variable in Vercel. Keep the direct URL in the migration environment.
 2. Run `npm ci` to generate Prisma Client, then run `npm run db:deploy` to apply the schema. Migrations are run explicitly so that a preview build cannot change a production database.
-3. To create an admin from PowerShell, enter a password of 12 to 128 characters and run the provisioning command.
+### Enable admin sign-in
+
+1. In Neon, enable **Managed Better Auth** on the branch used by `DATABASE_URL`. Open **Auth → Configuration** and copy the Auth URL into `NEON_AUTH_BASE_URL` in `.env.local`. [Neon Next.js guide](https://neon.com/docs/auth/quick-start/nextjs-api-only)
+2. Generate a cookie secret from PowerShell and save it as `NEON_AUTH_COOKIE_SECRET`.
+
+   ```powershell
+   node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
+   ```
+
+3. Create your Neon Auth account with a password of 12 to 128 characters. If the account already exists, copy its user ID from **Auth → Users** and skip the creation command. For local provisioning, enable **Allow Localhost** on the development branch. If `NEXT_PUBLIC_SITE_URL` is set, add that origin to Neon's trusted domains.
 
    ```powershell
    $env:VAULT_ADMIN_PASSWORD = Read-Host -MaskInput "New admin password"
@@ -25,11 +34,12 @@ Open http://localhost:3000. Without a database, the store uses the 12 sample lis
    Remove-Item Env:VAULT_ADMIN_PASSWORD
    ```
 
-4. Sign in at `/admin/login`. Use the signed-in email in the dashboard to change the password. A password change revokes all active sessions.
+4. Check the account in **Auth → Users**, then set `NEON_ADMIN_USER_IDS` to its exact user ID. Use comma-separated IDs if several store admins need access. Restart the app and sign in at `/admin/login`. Approving an ID grants access to the store dashboard. A password change revokes the account's other sessions.
+5. For Vercel, add `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`, and `NEON_ADMIN_USER_IDS` as server environment variables on the deployment that uses the corresponding Neon branch. Trust the deployment's origin in Neon and redeploy.
 
 ### Move an existing catalogue
 
-Use a fresh Neon branch after applying the Prisma migrations. For the final transfer, pause source writes and let pending payments settle before taking the snapshot. Obtain the legacy direct PostgreSQL connection string from the database provider and set it as `LEGACY_DATABASE_URL` in the local shell. With PostgreSQL client tools `pg_dump` and `psql` on PATH, run `npm run db:import-legacy`. It copies catalogue data, filter settings, image references, orders, payment records and inbox messages into the new database in a single restore transaction. Admin accounts need new passwords and must be provisioned separately. Check catalogue and order counts before changing the Vercel connection. Keep the original database available until the transfer is verified.
+Use a fresh Neon branch after applying the Prisma migrations. For the final transfer, pause source writes and let pending payments settle before taking the snapshot. Obtain the legacy direct PostgreSQL connection string from the database provider and set it as `LEGACY_DATABASE_URL` in the local shell. With PostgreSQL client tools `pg_dump` and `psql` on PATH, run `npm run db:import-legacy`. It copies catalogue data, filter settings, image references, orders, payment records and inbox messages into the new database in a single restore transaction. Provision admin accounts in Neon Auth separately. Existing Supabase or password-based store admin accounts do not carry over to Managed Better Auth. Check catalogue and order counts before changing the Vercel connection. Keep the original database available until the transfer is verified.
 
 ## Upload product photos
 
@@ -59,4 +69,4 @@ node ./node_modules/@playwright/test/cli.js install chromium --only-shell
 npm test
 ```
 
-On Windows, set `NODE_USE_SYSTEM_CA=1` in the current shell if Node cannot verify the TLS certificates for browser or font downloads. Playwright checks the sample storefront on desktop and mobile Chromium. A separate local fixture exercises admin and checkout through the application using the same migrations, the Prisma PostgreSQL driver, and an intercepted PayHere form submission. The database suite checks access boundaries, reservations and payment transitions. Run the hosted PayHere sandbox check with your merchant and Neon project.
+On Windows, set `NODE_USE_SYSTEM_CA=1` in the current shell if Node cannot verify the TLS certificates for browser or font downloads. Playwright checks the sample storefront on desktop and mobile Chromium. A separate local fixture exercises admin and checkout through the application using the same migrations, the Prisma PostgreSQL driver, a local Neon Auth fixture and an intercepted PayHere form submission. The database suite checks access boundaries, reservations and payment transitions. Run the hosted PayHere sandbox check with your merchant and Neon project.

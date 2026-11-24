@@ -1,69 +1,63 @@
 import "server-only"
-import { createHash, randomBytes } from "node:crypto"
+import { createNeonAuth } from "@neon/auth/next/server"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { cache } from "react"
 import { backendConfigured, database } from "./backend"
-import { hashPassword, verifyPassword } from "./admin-password.mjs"
 
-const cookieName = "vault_admin_session"
-const sessionAge = 8 * 60 * 60 * 1000
-const tokenHash = (token: string) => createHash("sha256").update(token).digest("hex")
+const baseUrl = process.env.NEON_AUTH_BASE_URL
+const cookieSecret = process.env.NEON_AUTH_COOKIE_SECRET
+const approvedAdmins = new Set(
+  (process.env.NEON_ADMIN_USER_IDS ?? "").split(",").map((id) => id.trim()).filter(Boolean),
+)
 
-async function currentToken() {
-  const token = (await cookies()).get(cookieName)?.value
-  return token && /^[a-f0-9]{64}$/.test(token) ? tokenHash(token) : null
+const authUrl = baseUrl && URL.canParse(baseUrl) ? new URL(baseUrl) : null
+const validAuthUrl = authUrl && (authUrl.protocol === "https:" ||
+  (process.env.NODE_ENV === "development" && authUrl.protocol === "http:" && authUrl.hostname === "127.0.0.1"))
+export const adminAuthConfigured = Boolean(backendConfigured && validAuthUrl &&
+  cookieSecret && cookieSecret.length >= 32 && approvedAdmins.size)
+
+let neonAuth: ReturnType<typeof createNeonAuth> | undefined
+const sessionCookie = "__Secure-neon-auth.session_token"
+const sessionDataCookie = "__Secure-neon-auth.local.session_data"
+
+function auth() {
+  if (!adminAuthConfigured || !authUrl || !cookieSecret) throw new Error("Neon admin sign-in is not configured")
+  return neonAuth ??= createNeonAuth({
+    baseUrl: authUrl.href,
+    cookies: { secret: cookieSecret, sameSite: "strict" },
+  })
 }
 
 export async function startAdminSession(email: string, password: string) {
-  const db = database()
-  const admin = await db.adminUser.findUnique({ where: { email: email.trim().toLowerCase() } })
-  if (!await verifyPassword(password, admin?.password_hash) || !admin) return false
-
-  const token = randomBytes(32).toString("hex")
-  const expires = new Date(Date.now() + sessionAge)
-  const created = await db.$transaction(async (tx) => {
-    // Serialize issuance with password changes so a verified old password cannot create a new session.
-    const match = await tx.$queryRaw<{ id: string }[]>`
-      SELECT id FROM public.admin_users
-      WHERE id = ${admin.id}::uuid AND password_hash = ${admin.password_hash}
-      FOR UPDATE
-    `
-    if (!match.length) return false
-    await tx.adminSession.deleteMany({ where: { admin_id: admin.id, expires_at: { lte: new Date() } } })
-    await tx.adminSession.create({ data: { token_hash: tokenHash(token), admin_id: admin.id, expires_at: expires } })
-    return true
-  })
-  if (!created) return false
-
-  const cookieStore = await cookies()
-  cookieStore.set(cookieName, token, {
-    httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/admin", expires,
-  })
+  const { data, error } = await auth().signIn.email({ email: email.trim().toLowerCase(), password, rememberMe: false })
+  if (error && error.status >= 500) throw new Error("Neon Auth is unavailable")
+  if (!data?.user) return false
+  if (!approvedAdmins.has(data.user.id)) {
+    // The SDK writes these cookies before returning the user. Do not send them to an unapproved account.
+    const store = await cookies()
+    for (const name of [sessionCookie, sessionDataCookie]) {
+      store.set(name, "", { path: "/", maxAge: 0, secure: true, httpOnly: true, sameSite: "strict" })
+    }
+    return false
+  }
   return true
 }
 
 export async function endAdminSession() {
-  const token = await currentToken()
-  if (token) await database().adminSession.deleteMany({ where: { token_hash: token } })
-  await clearAdminCookie()
-}
-
-async function clearAdminCookie() {
-  const cookieStore = await cookies()
-  cookieStore.set(cookieName, "", { path: "/admin", expires: new Date(0) })
+  const { error } = await auth().signOut()
+  if (error) throw new Error("Neon Auth could not end the session")
 }
 
 export const adminIdentity = cache(async () => {
-  if (!backendConfigured) redirect("/admin/login")
-  const token = await currentToken()
-  if (!token) redirect("/admin/login")
-  const session = await database().adminSession.findUnique({
-    where: { token_hash: token, expires_at: { gt: new Date() } },
-    select: { admin: { select: { id: true, email: true } } },
-  })
-  if (!session) redirect("/admin/login")
-  return session.admin
+  if (!adminAuthConfigured || !(await cookies()).has(sessionCookie)) {
+    redirect("/admin/login")
+  }
+
+  // Check the provider on every request so a revoked or expired session cannot use cached admin access.
+  const { data, error } = await auth().getSession({ query: { disableCookieCache: "true", disableRefresh: "true" } })
+  if (error || !data?.session || !data.user || !approvedAdmins.has(data.user.id)) redirect("/admin/login")
+  return { id: data.user.id, email: data.user.email }
 })
 
 export async function requireAdminDatabase() {
@@ -71,19 +65,13 @@ export async function requireAdminDatabase() {
   return database()
 }
 
-export async function updateAdminPassword(id: string, current: string, password: string) {
-  const db = database()
-  const admin = await db.adminUser.findUnique({ where: { id } })
-  if (!await verifyPassword(current, admin?.password_hash) || !admin) return false
-  const replacement = await hashPassword(password)
-  const updated = await db.$transaction(async (tx) => {
-    const { count } = await tx.adminUser.updateMany({
-      where: { id, password_hash: admin.password_hash }, data: { password_hash: replacement },
-    })
-    if (!count) return false
-    await tx.adminSession.deleteMany({ where: { admin_id: id } })
-    return true
+export async function updateAdminPassword(current: string, password: string) {
+  const { error } = await auth().changePassword({
+    currentPassword: current,
+    newPassword: password,
+    revokeOtherSessions: true,
   })
-  if (updated) await clearAdminCookie()
-  return updated
+  if (error?.code === "invalid_credentials") return false
+  if (error) throw new Error("Neon Auth could not change the password")
+  return true
 }

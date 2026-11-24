@@ -5,10 +5,10 @@ import { headers } from "next/headers"
 import { revalidatePath, updateTag } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
-import { endAdminSession, requireAdminDatabase, startAdminSession } from "@/lib/admin-auth"
+import { adminAuthConfigured, endAdminSession, requireAdminDatabase, startAdminSession } from "@/lib/admin-auth"
 import { Prisma } from "@/generated/prisma/client"
 import { expireCheckouts } from "@/lib/checkout"
-import { backendConfigured, publicSettingsTag } from "@/lib/backend"
+import { publicSettingsTag } from "@/lib/backend"
 import { productFlags, productInput, slugInput } from "@/lib/admin-product"
 import { readGemCategories } from "@/lib/gem-categories"
 import { discardProductPhoto, uploadProductPhoto } from "@/lib/cloudinary"
@@ -27,7 +27,7 @@ function refreshCatalogue() {
 }
 
 export async function signIn(form: FormData) {
-  if (!backendConfigured) redirect("/admin/login")
+  if (!adminAuthConfigured) redirect("/admin/login")
   const input = credentials.safeParse(Object.fromEntries(form))
   if (!input.success) redirect("/admin/login?result=denied")
   const request = new Request("http://internal/admin", { headers: await headers() })
@@ -49,7 +49,7 @@ export async function signIn(form: FormData) {
 }
 
 export async function signOut() {
-  if (backendConfigured) await endAdminSession()
+  if (adminAuthConfigured) await endAdminSession()
   redirect("/admin/login")
 }
 

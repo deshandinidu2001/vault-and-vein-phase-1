@@ -17,6 +17,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
     <Link href="/admin" className="admin-text-link">Back to inventory</Link>
     <h1>Account security</h1>
     <p>{email}</p>
+    {result === "changed" && <p role="status" className="admin-notice">Password changed. Other sessions were signed out.</p>}
     <h2>Change password</h2>
     <form action={changePassword} className="grid gap-4">
       {[["current", "Current password"], ["password", "New password"], ["confirm", "Confirm new password"]].map(([name, label]) =>
@@ -24,7 +25,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
           <input className="admin-field" name={name} type="password" minLength={name === "current" ? 1 : 12} maxLength={128}
             autoComplete={name === "current" ? "current-password" : "new-password"} required />
         </label>)}
-      <p className="admin-muted text-sm">Use at least 12 characters. Sign in again after saving.</p>
+      <p className="admin-muted text-sm">Use at least 12 characters.</p>
       {message && <p role="alert" className="admin-notice">{message}</p>}
       <button className="admin-button admin-button-primary">Save password</button>
     </form>
