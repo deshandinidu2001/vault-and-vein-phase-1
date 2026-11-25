@@ -11,7 +11,6 @@ import type { GemCategory } from "@/types/stone"
 
 const catalogueFilter = {
   is_published: true,
-  is_sample: false,
   archived_at: null,
   category: { is_visible: true },
 } satisfies Prisma.ProductWhereInput
@@ -113,7 +112,7 @@ async function selectPreview(limit: number) {
   await connection()
   try {
     const products = await database().product.findMany({
-      select: catalogueFields, where: catalogueFilter, take: limit,
+      select: catalogueFields, where: { ...catalogueFilter, is_sample: false }, take: limit,
       orderBy: [{ is_featured: "desc" }, { slug: "asc" }],
     })
     return products.map(catalogueStone)
@@ -146,7 +145,7 @@ export async function getRelated(stone: Stone, limit = 4) {
       (item.collections.some((tag) => stone.collections.includes(tag)) ? 2 : 0) +
       (item.is_featured ? 1 : 0)
   }
-  return (await loadCatalogue()).filter((item) => item.slug !== stone.slug)
+  return (await loadCatalogue()).filter((item) => item.slug !== stone.slug && item.is_sample === stone.is_sample)
     .sort((a, b) => similarity(b) - similarity(a)).slice(0, limit)
 }
 
@@ -160,5 +159,5 @@ export async function getStoneOptions(adminCategories?: GemCategory[]) {
 }
 
 export async function getStoneSlugs() {
-  return (await loadCatalogue()).map(({ slug }) => slug)
+  return (await loadCatalogue()).filter(({ is_sample }) => !is_sample).map(({ slug }) => slug)
 }

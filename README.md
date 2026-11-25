@@ -26,11 +26,11 @@ Open http://localhost:3000. The catalogue shows published inventory from the dat
    node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
    ```
 
-3. Set `NEON_ADMIN_GOOGLE_EMAILS` in `.env.local` to the exact Google email address for each approved admin, separated by commas. For an existing installation, replace `NEON_ADMIN_USER_IDS` with this setting.
+3. Run `npm run db:deploy` to create the PIN storage table. Store admin access is limited to the verified Google account `vault8vein@gmail.com`.
 4. In **Better Auth → Configure Auth**, check that Google is enabled and your app origin is trusted. Neon provides shared Google credentials for development. For production, configure a Google OAuth client and register `<NEON_AUTH_BASE_URL>/callback/google` in Google Cloud. [Neon Google OAuth setup](https://neon.com/docs/auth/guides/setup-oauth)
-5. Enable email verification codes in Neon and configure email delivery for production. The admin app uses Neon's Email OTP endpoints and requires a code on every new sign-in. [Neon Email OTP guide](https://neon.com/docs/auth/guides/plugins/email-otp)
-6. Restart the app and open `/vault8@vein@8/login`. Select **Continue with Google**, then **Send verification code**. The first Google sign-in creates the Neon Auth user. The dashboard requires a verified Google email on the allowlist and a valid code.
-7. For Vercel, add `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`, and `NEON_ADMIN_GOOGLE_EMAILS` as server environment variables. Trust the deployment's origin in Neon and redeploy.
+5. Enable email verification codes in Neon and configure email delivery for production. The app uses Neon's Email OTP endpoints for PIN setup and recovery. [Neon Email OTP guide](https://neon.com/docs/auth/guides/plugins/email-otp)
+6. Restart the app and open `/vault8@vein@8`. Continue with Google, send a verification code, and choose an 8–12 digit PIN. On later sign-ins, enter the PIN after Google. Use **Forgot PIN?** or **Account security → Change PIN** to choose a new PIN using an email code. A PIN change signs out other admin sessions.
+7. For Vercel, set `NEON_AUTH_BASE_URL` and `NEON_AUTH_COOKIE_SECRET` as server environment variables. Use the same cookie secret when multiple deployments connect to the same PIN database. Changing the secret requires a PIN reset. Trust the deployment's origin in Neon and redeploy.
 
 ### Move an existing catalogue
 

@@ -18,14 +18,19 @@ async function continueWithGoogle(page: Page, role: "visitor" | "admin") {
   await page.getByRole("button", { name: "Continue with Google" }).click()
 }
 
-async function submitCode(page: Page, code: string) {
+async function submitCode(page: Page, code: string, pin: string) {
   await page.getByLabel("Verification code").fill(code)
-  await page.getByRole("button", { name: "Verify and sign in" }).click()
+  await page.getByLabel("New PIN", { exact: true }).fill(pin)
+  await page.getByLabel("Confirm new PIN", { exact: true }).fill(pin)
+  await page.getByRole("button", { name: "Save PIN and sign in" }).click()
 }
 
 test("configured checkout, webhook verification, durable messages and admin fulfillment", async ({ page, request, baseURL }) => {
   await page.route("https://res.cloudinary.com/vault-fixture/**", (route) => route.fulfill({ contentType: "image/png", body: samplePhoto.buffer }))
-  expect((await request.get("/shop/fixture-sample")).status()).toBe(404)
+  await page.goto("/shop/fixture-sample")
+  await expect(page.getByText("Sample listing for display only.")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Add to Cart" })).toHaveCount(0)
+  await expect(page.getByRole("button", { name: "Buy now" })).toHaveCount(0)
   expect((await request.get("/images/stones/fixture-sample")).status()).toBe(404)
   expect((await request.get("/admin")).status()).toBe(404)
   await page.goto("/shop/fixture-garnet")
@@ -122,7 +127,7 @@ test("configured checkout, webhook verification, durable messages and admin fulf
 
   await continueWithGoogle(page, "visitor")
   await expect(page.getByRole("main").getByRole("alert")).toHaveText("This Google account is not approved for store admin access.")
-  expect((await page.context().cookies()).some(cookie => cookie.name === "__Host-vault-admin-verified")).toBe(false)
+  expect((await page.context().cookies()).some(cookie => cookie.name === "__Host-vault-admin-pin")).toBe(false)
   await page.goto("/vault8@vein@8/products/new")
   await expect(page).toHaveURL(/\/vault8@vein@8\/login/)
   await expect(page.getByLabel("Upload photo")).toHaveCount(0)
@@ -136,15 +141,15 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page).toHaveURL(/\/vault8@vein@8\/verify$/, { timeout: 15000 })
   await page.getByRole("button", { name: "Send verification code" }).click()
   await expect(page.getByRole("status")).toContainText("Check your email")
-  await submitCode(page, "000000")
+  await submitCode(page, "000000", "86425139")
   await expect(page.getByRole("main").getByRole("alert")).toContainText("invalid or expired")
-  await submitCode(page, "123456")
+  await submitCode(page, "123456", "86425139")
   await expect(page).toHaveURL(/\/vault8@vein@8$/)
   await page.goto("/vault8@vein@8/verify")
   await expect(page).toHaveURL(/\/vault8@vein@8$/)
   await expect(page.getByRole("heading", { name: "Store admin" })).toBeVisible()
   await expect(page.locator(".site-footer")).toHaveCount(0)
-  expect((await page.context().cookies()).some((cookie) => cookie.name === "__Host-vault-admin-verified" && cookie.httpOnly && cookie.sameSite === "Strict" && cookie.secure)).toBe(true)
+  expect((await page.context().cookies()).some((cookie) => cookie.name === "__Host-vault-admin-pin" && cookie.httpOnly && cookie.sameSite === "Strict" && cookie.secure)).toBe(true)
   const authenticated = await page.request.get("/vault8@vein@8")
   expect(authenticated.headers()["cache-control"]).toContain("no-store")
   expect(authenticated.headers()["content-security-policy"]).toContain("frame-ancestors 'none'")
@@ -279,12 +284,15 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page.getByText("Listing removed from the shop and inventory.")).toBeVisible()
   await expect(newListing).toHaveCount(0)
   const priorCookies = (await page.context().cookies()).filter(cookie =>
-    cookie.name === "__Secure-neon-auth.session_token" || cookie.name === "__Host-vault-admin-verified")
+    cookie.name === "__Secure-neon-auth.session_token" || cookie.name === "__Host-vault-admin-pin")
   expect(priorCookies).toHaveLength(2)
-  await page.getByRole("link", { name: "vault-fixture-admin@example.test" }).click()
+  await page.getByRole("link", { name: "vault8vein@gmail.com" }).click()
   await expect(page.getByRole("heading", { name: "Account security" })).toBeVisible()
-  await page.getByRole("button", { name: "Sign out" }).click()
-  await expect(page).toHaveURL(/\/vault8@vein@8\/login$/)
+  await page.getByRole("link", { name: "Change PIN" }).click()
+  await page.getByRole("button", { name: "Send verification code" }).click()
+  await expect(page.getByRole("status")).toContainText("Check your email")
+  await submitCode(page, "123456", "95738401")
+  await expect(page).toHaveURL(/\/vault8@vein@8$/)
   const staleBrowser = await page.context().browser()!.newContext({ baseURL })
   try {
     await staleBrowser.addCookies(priorCookies)
@@ -295,8 +303,19 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   } finally {
     await staleBrowser.close()
   }
+  await page.getByRole("button", { name: "Sign out" }).click()
   await page.goto("/vault8@vein@8?view=orders")
   await expect(page).toHaveURL(/\/vault8@vein@8\/login$/)
+  await continueWithGoogle(page, "admin")
+  await expect(page.getByRole("heading", { name: "Enter admin PIN" })).toBeVisible()
+  await page.getByLabel("Admin PIN").fill("86425139")
+  await page.getByRole("button", { name: "Sign in to admin" }).click()
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("PIN is incorrect")
+  await page.getByLabel("Admin PIN").fill("95738401")
+  await page.getByRole("button", { name: "Sign in to admin" }).click()
+  await expect(page.getByRole("heading", { name: "Store admin" })).toBeVisible()
+  await page.goto("/vault8@vein@8/login")
+  await expect(page).toHaveURL(/\/vault8@vein@8$/)
 })
 
 test("a slow product navigation shows loading feedback", async ({ page }) => {

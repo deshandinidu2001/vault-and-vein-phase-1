@@ -20,6 +20,7 @@ export async function generateMetadata({ params }: Props) {
   const { slug } = await params
   const stone = await getStoneBySlug(slug)
   if (!stone) return { title: "Stone not found", robots: { index: false, follow: true } }
+  if (stone.is_sample) return { title: stone.name + " · Sample", robots: { index: false, follow: true } }
   return pageMetadata(stone.name, stone.description, "/shop/" + stone.slug)
 }
 
@@ -63,11 +64,11 @@ export default async function StoneDetail({ params }: Props) {
     ["Gem type", stoneCategory(stone)], ["Cut", stone.cut], ["Weight", stone.carat + " ct"],
     ["Dimensions", [stone.length_mm, stone.width_mm, stone.depth_mm].join(" × ") + " mm"],
     ["Colour", stone.colour], ["Clarity", stone.clarity], ["Treatment", stone.treatment], ["Origin", stone.origin],
-    ["Lab report", stone.certified ? "Available on request" : "Not listed"],
+    ["Lab report", stone.is_sample ? "Not applicable to samples" : stone.certified ? "Available on request" : "Not listed"],
   ]
 
   return <article className="wrap section page-top-compact space-y-8 md:space-y-12">
-    <ProductData stone={stone} />
+    {!stone.is_sample && <ProductData stone={stone} />}
     <Link href="/shop" className="line-link text-sm"><ArrowLeft size={18} aria-hidden="true" /> Back to the shop</Link>
     <div className="grid gap-7 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:gap-10 xl:gap-16">
       <ProductGallery stone={stone} extraPhotos={stone.gallery_urls ?? []} />
@@ -75,14 +76,16 @@ export default async function StoneDetail({ params }: Props) {
         <div className="grid gap-4">
           <div className="flex flex-wrap items-center gap-3">
             <p className="text-sm font-semibold text-[#785520]">{stoneCategory(stone)}</p>
-            <Badge variant="outline" className="capitalize">{stone.status}</Badge>
+            <Badge variant="outline" className="capitalize">{stone.is_sample ? "Sample" : stone.status}</Badge>
           </div>
           <h1 className="wrap-anywhere text-[clamp(3rem,5.5vw,5.4rem)]">{stone.name}</h1>
           <p className="wrap-anywhere text-muted-foreground">{stone.cut} cut · {stone.carat} ct · {stone.colour}</p>
         </div>
         <div className="product-purchase grid gap-4">
-          <span className="text-2xl font-semibold text-emerald"><StonePrice lkr={stone.price_lkr} both /></span>
-          <p className="text-sm text-muted-foreground">USD is an estimate.</p>
+          {stone.is_sample ? <p className="text-sm text-muted-foreground">Sample listing for display only.</p> : <>
+            <span className="text-2xl font-semibold text-emerald"><StonePrice lkr={stone.price_lkr} both /></span>
+            <p className="text-sm text-muted-foreground">USD is an estimate.</p>
+          </>}
           <ProductActions stone={stone} paymentsEnabled={Boolean(checkoutConfig())} />
         </div>
       </div>

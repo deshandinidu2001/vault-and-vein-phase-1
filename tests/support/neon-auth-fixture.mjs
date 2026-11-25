@@ -2,7 +2,7 @@ import { once } from "node:events"
 import { createServer } from "node:http"
 import { randomUUID } from "node:crypto"
 
-export const fixtureAdminEmail = "vault-fixture-admin@example.test"
+const fixtureAdminEmail = "vault8vein@gmail.com"
 const cookie = "__Secure-neon-auth.session_token"
 const challengeCookie = "__Secure-neon-auth.session_challenge"
 
@@ -11,7 +11,7 @@ export async function startAuthFixture() {
     id, name: role, email: "vault-fixture-" + role + "@example.test",
     emailVerified: true, createdAt: new Date(), updatedAt: new Date(),
   })
-  const admin = userFor("admin", randomUUID())
+  const admin = { ...userFor("admin", randomUUID()), email: fixtureAdminEmail }
   const visitor = userFor("visitor", randomUUID())
   const sessions = new Map()
   const challenges = new Map()

@@ -136,6 +136,14 @@ model RateLimit {
   @@map("rate_limits")
 }
 
+model StoreAdminPin {
+  email     String @id
+  pin_hash  String
+  revision  String @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  @@map("store_admin_pin")
+}
+
 model AdminUser {
   id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email         String         @unique

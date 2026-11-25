@@ -7,23 +7,22 @@ import { NextResponse, type NextRequest } from "next/server"
 import { cache } from "react"
 import { z } from "zod"
 import { backendConfigured, database } from "./backend"
+import { adminPinRevision, storeAdminEmail } from "./admin-pin"
 
 const baseUrl = process.env.NEON_AUTH_BASE_URL
 const cookieSecret = process.env.NEON_AUTH_COOKIE_SECRET
-const approvedEmails = new Set(
-  (process.env.NEON_ADMIN_GOOGLE_EMAILS ?? "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean),
-)
 const authUrl = baseUrl && URL.canParse(baseUrl) ? new URL(baseUrl) : null
 const validAuthUrl = authUrl && (authUrl.protocol === "https:" ||
   (process.env.NODE_ENV === "development" && authUrl.protocol === "http:" && authUrl.hostname === "127.0.0.1"))
 export const adminAuthConfigured = Boolean(backendConfigured && validAuthUrl &&
-  cookieSecret && cookieSecret.length >= 32 && approvedEmails.size)
+  cookieSecret && cookieSecret.length >= 32)
 
 const sessionCookie = "__Secure-neon-auth.session_token"
 const sessionDataCookie = "__Secure-neon-auth.local.session_data"
 const attemptCookie = "__Host-vault-admin-oauth"
 const googleCookie = "__Host-vault-admin-google"
-const verifiedCookie = "__Host-vault-admin-verified"
+const unlockedCookie = "__Host-vault-admin-pin"
+const legacyCookie = "__Host-vault-admin-verified"
 const oauthCallback = "/vault8@vein@8/oauth/callback"
 const stepLifetime = 10 * 60
 const adminLifetime = 8 * 60 * 60
@@ -70,7 +69,7 @@ export async function startAdminGoogleSignIn(origin: string) {
   if (!(target.origin === authUrl?.origin || target.origin === "https://accounts.google.com")) return null
   store.set(attemptCookie, attempt, { ...cookieOptions, maxAge: stepLifetime })
   store.set(googleCookie, "", { ...cookieOptions, maxAge: 0 })
-  store.set(verifiedCookie, "", { ...cookieOptions, maxAge: 0 })
+  store.set(unlockedCookie, "", { ...cookieOptions, maxAge: 0 })
   return target.href
 }
 
@@ -98,21 +97,30 @@ const adminSession = cache(async () => {
   const store = await cookies()
   const token = store.get(sessionCookie)?.value
   if (!token) return null
-  const verified = validProof(verifiedCookie, store.get(verifiedCookie)?.value, token)
-  if (!verified && !validProof(googleCookie, store.get(googleCookie)?.value, token)) return null
+  const proof = store.get(unlockedCookie)?.value
+  const googleVerified = validProof(googleCookie, store.get(googleCookie)?.value, token)
+  if (!proof && !googleVerified) return null
 
   // Check Neon on each request so an expired or revoked session cannot grant admin access.
   const { data, error } = await auth().getSession({ query: { disableCookieCache: "true", disableRefresh: "true" } })
   if (error || !data?.session || !data.user) return null
   const { id, email, emailVerified } = data.user
-  return { id, email, approved: emailVerified === true && approvedEmails.has(email.toLowerCase()), verified }
+  const approved = emailVerified === true && email.toLowerCase() === storeAdminEmail
+  const revision = approved ? await adminPinRevision() : null
+  const unlocked = revision !== null && validProof(unlockedCookie + ":" + revision, proof, token)
+  if (!unlocked && !googleVerified) return null
+  return { id, email, approved, unlocked, revision }
 })
 
-export async function pendingAdminIdentity() {
+export async function continueAdminSignIn() {
+  const session = await adminSession()
+  if (session?.approved) redirect(session.unlocked ? "/vault8@vein@8" : "/vault8@vein@8/verify")
+}
+
+export async function requireAdminGoogleIdentity() {
   const session = await adminSession()
   if (!session) redirect("/vault8@vein@8/login")
   if (!session.approved) redirect("/vault8@vein@8/login?result=denied")
-  if (session.verified) redirect("/vault8@vein@8")
   return session
 }
 
@@ -153,11 +161,20 @@ export async function verifyAdminCode(user: { id: string; email: string }, code:
 
   const token = store.get(sessionCookie)?.value
   if (!token) return "unavailable"
-  store.set(verifiedCookie, issueProof(verifiedCookie, token, adminLifetime), {
+  store.set(googleCookie, issueProof(googleCookie, token, stepLifetime), {
+    ...cookieOptions, maxAge: stepLifetime,
+  })
+  return "verified"
+}
+
+export async function unlockAdminSession(revision: string) {
+  const store = await cookies()
+  const token = store.get(sessionCookie)?.value
+  if (!token) throw new Error("Neon session is missing")
+  store.set(unlockedCookie, issueProof(unlockedCookie + ":" + revision, token, adminLifetime), {
     ...cookieOptions, sameSite: "strict", maxAge: adminLifetime,
   })
   store.set(googleCookie, "", { ...cookieOptions, maxAge: 0 })
-  return "verified"
 }
 
 export async function endAdminSession() {
@@ -165,7 +182,7 @@ export async function endAdminSession() {
   try {
     if (adminAuthConfigured && store.has(sessionCookie)) await auth().signOut().catch(() => {})
   } finally {
-    for (const name of [sessionCookie, sessionDataCookie, attemptCookie, googleCookie, verifiedCookie]) {
+    for (const name of [sessionCookie, sessionDataCookie, attemptCookie, googleCookie, unlockedCookie, legacyCookie]) {
       store.set(name, "", { ...cookieOptions, maxAge: 0 })
     }
   }
@@ -175,7 +192,7 @@ export const adminIdentity = cache(async () => {
   const session = await adminSession()
   if (!session) redirect("/vault8@vein@8/login")
   if (!session.approved) redirect("/vault8@vein@8/login?result=denied")
-  if (!session.verified) redirect("/vault8@vein@8/verify")
+  if (!session.unlocked) redirect("/vault8@vein@8/verify")
   return { id: session.id, email: session.email }
 })
 

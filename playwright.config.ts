@@ -27,7 +27,6 @@ export default defineConfig({
       DIRECT_URL: "",
       NEON_AUTH_BASE_URL: "",
       NEON_AUTH_COOKIE_SECRET: "",
-      NEON_ADMIN_GOOGLE_EMAILS: "",
       PAYHERE_MODE: "",
       PAYHERE_MERCHANT_ID: "",
       PAYHERE_MERCHANT_SECRET: "",
