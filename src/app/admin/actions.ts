@@ -1,23 +1,19 @@
 "use server"
 
 import { randomUUID } from "node:crypto"
-import { headers } from "next/headers"
 import { revalidatePath, updateTag } from "next/cache"
 import { redirect } from "next/navigation"
 import { z } from "zod"
-import { adminAuthConfigured, endAdminSession, requireAdminDatabase, startAdminSession } from "@/lib/admin-auth"
+import { endAdminSession, requireAdminDatabase } from "@/lib/admin-auth"
 import { Prisma } from "@/generated/prisma/client"
 import { expireCheckouts } from "@/lib/checkout"
 import { publicSettingsTag } from "@/lib/backend"
 import { productFlags, productInput, slugInput } from "@/lib/admin-product"
 import { readGemCategories } from "@/lib/gem-categories"
 import { discardProductPhoto, uploadProductPhoto } from "@/lib/cloudinary"
-import { permitRequest } from "@/lib/http"
 import { getStoneOptions } from "@/lib/data"
 import { configurableShopOptions, customShopOption, normalizeShopOption, shopFilterConfig, shopFilterControls } from "@/lib/shop-filter-config"
 import { readShopFilterSettings } from "@/lib/shop-filter-settings"
-
-const credentials = z.object({ email: z.email().max(254), password: z.string().min(1).max(128) })
 
 function refreshCatalogue() {
   revalidatePath("/admin")
@@ -26,30 +22,8 @@ function refreshCatalogue() {
   revalidatePath("/shop/[slug]", "page")
 }
 
-export async function signIn(form: FormData) {
-  if (!adminAuthConfigured) redirect("/admin/login")
-  const input = credentials.safeParse(Object.fromEntries(form))
-  if (!input.success) redirect("/admin/login?result=denied")
-  const request = new Request("http://internal/admin", { headers: await headers() })
-  let allowed: boolean
-  try {
-    allowed = await permitRequest(request, "admin-login", input.data.email)
-  } catch {
-    redirect("/admin/login?result=unavailable")
-  }
-  if (!allowed) redirect("/admin/login?result=limited")
-  let signedIn: boolean
-  try {
-    signedIn = await startAdminSession(input.data.email, input.data.password)
-  } catch {
-    redirect("/admin/login?result=unavailable")
-  }
-  if (!signedIn) redirect("/admin/login?result=denied")
-  redirect("/admin")
-}
-
 export async function signOut() {
-  if (adminAuthConfigured) await endAdminSession()
+  await endAdminSession()
   redirect("/admin/login")
 }
 

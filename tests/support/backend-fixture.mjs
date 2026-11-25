@@ -2,7 +2,7 @@ import { spawn } from "node:child_process"
 import { readFile } from "node:fs/promises"
 import { PGlite } from "@electric-sql/pglite"
 import { PGLiteSocketServer } from "@electric-sql/pglite-socket"
-import { fixtureAdminId, startAuthFixture } from "./neon-auth-fixture.mjs"
+import { fixtureAdminEmail, startAuthFixture } from "./neon-auth-fixture.mjs"
 import { configuredPort, databasePort } from "./ports.mjs"
 
 const db = await PGlite.create()
@@ -27,7 +27,7 @@ const child = spawn(process.execPath, ["./node_modules/next/dist/bin/next", "dev
     ...process.env, VAULT_VEIN_BROWSER_FIXTURE: "1", NEXT_PUBLIC_SITE_URL: "https://vault-fixture.example",
     DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:" + databasePort + "/postgres?sslmode=disable",
     NEON_AUTH_BASE_URL: auth.url, NEON_AUTH_COOKIE_SECRET: "local-fixture-cookie-signing-secret-at-least-32",
-    NEON_ADMIN_USER_IDS: fixtureAdminId,
+    NEON_ADMIN_GOOGLE_EMAILS: fixtureAdminEmail,
     PAYHERE_MODE: "sandbox", PAYHERE_MERCHANT_ID: "000000", PAYHERE_MERCHANT_SECRET: "fixture-merchant-secret", SHIPPING_LKR: "500",
     CLOUDINARY_CLOUD_NAME: "vault-fixture", CLOUDINARY_API_KEY: "fixture-cloud-key", CLOUDINARY_API_SECRET: "fixture-cloud-secret",
     NODE_OPTIONS: [process.env.NODE_OPTIONS, "--import=" + new URL("./cloudinary-fixture.mjs", import.meta.url).href].filter(Boolean).join(" "),

@@ -23,10 +23,11 @@ export default defineConfig({
     env: {
       NEXT_PUBLIC_SITE_URL: storefrontUrl,
       DATABASE_URL: "",
+      DATABASE_URL_UNPOOLED: "",
       DIRECT_URL: "",
       NEON_AUTH_BASE_URL: "",
       NEON_AUTH_COOKIE_SECRET: "",
-      NEON_ADMIN_USER_IDS: "",
+      NEON_ADMIN_GOOGLE_EMAILS: "",
       PAYHERE_MODE: "",
       PAYHERE_MERCHANT_ID: "",
       PAYHERE_MERCHANT_SECRET: "",

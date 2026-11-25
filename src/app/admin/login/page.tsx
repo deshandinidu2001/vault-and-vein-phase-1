@@ -1,10 +1,9 @@
 import { adminAuthConfigured } from "@/lib/admin-auth"
-import { signIn } from "../actions"
+import { signInWithGoogle } from "./actions"
 
 const errors = {
-  denied: "These credentials did not grant admin access.",
-  unavailable: "Sign-in is temporarily unavailable. Try again shortly.",
-  limited: "Too many sign-in attempts. Try again in a few minutes.",
+  denied: "This Google account is not approved for store admin access.",
+  "google-failed": "Google sign-in could not be completed. Try again.",
 }
 
 export default async function AdminLogin({ searchParams }: PageProps<"/admin/login">) {
@@ -12,15 +11,10 @@ export default async function AdminLogin({ searchParams }: PageProps<"/admin/log
   const error = typeof result === "string" && Object.hasOwn(errors, result) ? errors[result as keyof typeof errors] : null
   return <section className="admin-panel mx-auto max-w-md space-y-6 p-6 sm:p-9">
     <h1>Admin sign-in</h1>
-    {adminAuthConfigured ? <form action={signIn} className="grid gap-4">
-      <label className="grid gap-2">Email
-        <input className="admin-field" type="email" name="email" autoComplete="username" maxLength={254} required />
-      </label>
-      <label className="grid gap-2">Password
-        <input className="admin-field" type="password" name="password" autoComplete="current-password" maxLength={128} required />
-      </label>
+    {adminAuthConfigured ? <form action={signInWithGoogle} className="grid gap-4">
+      <p>Continue with your approved Google account, then enter the verification code sent to your email.</p>
       {error && <p role="alert">{error}</p>}
-      <button className="admin-button admin-button-primary w-fit" type="submit">Sign in</button>
-    </form> : <p>Store admin is unavailable until Neon Auth and the store database are configured.</p>}
+      <button className="admin-button admin-button-primary w-fit" type="submit">Continue with Google</button>
+    </form> : <p>Store admin is unavailable until Neon Auth, an approved Google email, and the store database are configured.</p>}
   </section>
 }

@@ -8,9 +8,9 @@ for (const path of [".env.local", ".env"]) {
 }
 
 const source = process.env.LEGACY_DATABASE_URL
-const target = process.env.DIRECT_URL
+const target = process.env.DATABASE_URL_UNPOOLED || process.env.DIRECT_URL
 if (!source || !target || source === target) {
-  console.error("Set LEGACY_DATABASE_URL and DIRECT_URL to different PostgreSQL databases.")
+  console.error("Set LEGACY_DATABASE_URL and DATABASE_URL_UNPOOLED (or DIRECT_URL) to different PostgreSQL databases.")
   process.exit(1)
 }
 

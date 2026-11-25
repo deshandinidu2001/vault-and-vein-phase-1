@@ -15,9 +15,9 @@ Open http://localhost:3000. Without a database, the store uses the 12 sample lis
 
 ## Connect Neon and create an admin
 
-1. Create a Neon project or branch for this store. In the **Connect** dialog, copy the pooled connection string into `DATABASE_URL` and the direct connection string into `DIRECT_URL` in `.env.local`. Use the database owner when applying migrations. Set the pooled URL as a server-only environment variable in Vercel. Keep the direct URL in the migration environment.
+1. Run `neon deploy` from the linked project to pull the pooled `DATABASE_URL`, direct `DATABASE_URL_UNPOOLED`, and `NEON_AUTH_BASE_URL` into the local environment file. For manual setup, copy both connection strings from the Neon **Connect** dialog into `.env.local`. `DIRECT_URL` is also accepted for a manually configured direct connection. Use the database owner when applying migrations. Set the pooled URL as a server-only environment variable in Vercel. Keep the direct URL in the migration environment.
 2. Run `npm ci` to generate Prisma Client, then run `npm run db:deploy` to apply the schema. Migrations are run explicitly so that a preview build cannot change a production database.
-### Enable admin sign-in
+### Set up admin sign-in with Google
 
 1. In Neon, enable **Managed Better Auth** on the branch used by `DATABASE_URL`. Open **Auth → Configuration** and copy the Auth URL into `NEON_AUTH_BASE_URL` in `.env.local`. [Neon Next.js guide](https://neon.com/docs/auth/quick-start/nextjs-api-only)
 2. Generate a cookie secret from PowerShell and save it as `NEON_AUTH_COOKIE_SECRET`.
@@ -26,20 +26,17 @@ Open http://localhost:3000. Without a database, the store uses the 12 sample lis
    node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
    ```
 
-3. Create your Neon Auth account with a password of 12 to 128 characters. If the account already exists, copy its user ID from **Auth → Users** and skip the creation command. For local provisioning, enable **Allow Localhost** on the development branch. If `NEXT_PUBLIC_SITE_URL` is set, add that origin to Neon's trusted domains.
-
-   ```powershell
-   $env:VAULT_ADMIN_PASSWORD = Read-Host -MaskInput "New admin password"
-   npm.cmd run admin:create -- owner@example.com
-   Remove-Item Env:VAULT_ADMIN_PASSWORD
-   ```
-
-4. Check the account in **Auth → Users**, then set `NEON_ADMIN_USER_IDS` to its exact user ID. Use comma-separated IDs if several store admins need access. Restart the app and sign in at `/admin/login`. Approving an ID grants access to the store dashboard. A password change revokes the account's other sessions.
-5. For Vercel, add `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`, and `NEON_ADMIN_USER_IDS` as server environment variables on the deployment that uses the corresponding Neon branch. Trust the deployment's origin in Neon and redeploy.
+3. Set `NEON_ADMIN_GOOGLE_EMAILS` in `.env.local` to the exact Google email address for each approved admin, separated by commas. For an existing installation, replace `NEON_ADMIN_USER_IDS` with this setting.
+4. In **Better Auth → Configure Auth**, check that Google is enabled and your app origin is trusted. Neon provides shared Google credentials for development. For production, configure a Google OAuth client and register `<NEON_AUTH_BASE_URL>/callback/google` in Google Cloud. [Neon Google OAuth setup](https://neon.com/docs/auth/guides/setup-oauth)
+5. Enable email verification codes in Neon and configure email delivery for production. The admin app uses Neon's Email OTP endpoints and requires a code on every new sign-in. [Neon Email OTP guide](https://neon.com/docs/auth/guides/plugins/email-otp)
+6. Restart the app and open `/admin/login`. Select **Continue with Google**, then **Send verification code**. The first Google sign-in creates the Neon Auth user. The dashboard requires a verified Google email on the allowlist and a valid code.
+7. For Vercel, add `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`, and `NEON_ADMIN_GOOGLE_EMAILS` as server environment variables. Trust the deployment's origin in Neon and redeploy.
 
 ### Move an existing catalogue
 
 Use a fresh Neon branch after applying the Prisma migrations. For the final transfer, pause source writes and let pending payments settle before taking the snapshot. Obtain the legacy direct PostgreSQL connection string from the database provider and set it as `LEGACY_DATABASE_URL` in the local shell. With PostgreSQL client tools `pg_dump` and `psql` on PATH, run `npm run db:import-legacy`. It copies catalogue data, filter settings, image references, orders, payment records and inbox messages into the new database in a single restore transaction. Provision admin accounts in Neon Auth separately. Existing Supabase or password-based store admin accounts do not carry over to Managed Better Auth. Check catalogue and order counts before changing the Vercel connection. Keep the original database available until the transfer is verified.
+
+For a sample catalogue, run `npm run db:seed:samples` after applying the Prisma migrations. It inserts the 12 sample listings and skips existing slugs. Sample prices are illustrative and the listings are excluded from checkout.
 
 ## Upload product photos
 

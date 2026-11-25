@@ -2,18 +2,20 @@ import { once } from "node:events"
 import { createServer } from "node:http"
 import { randomUUID } from "node:crypto"
 
-export const fixtureAdminId = "7667eca3-f954-469f-8d08-28d49eec9146"
+export const fixtureAdminEmail = "vault-fixture-admin@example.test"
 const cookie = "__Secure-neon-auth.session_token"
+const challengeCookie = "__Secure-neon-auth.session_challenge"
 
 export async function startAuthFixture() {
   const userFor = (role, id) => ({
     id, name: role, email: "vault-fixture-" + role + "@example.test",
     emailVerified: true, createdAt: new Date(), updatedAt: new Date(),
   })
-  const admin = userFor("admin", fixtureAdminId)
+  const admin = userFor("admin", randomUUID())
   const visitor = userFor("visitor", randomUUID())
   const sessions = new Map()
-  let adminPassword = "fixture-password"
+  const challenges = new Map()
+  const codes = new Set()
 
   function startSession(user, response) {
     const token = randomUUID()
@@ -23,8 +25,8 @@ export async function startAuthFixture() {
       expiresAt: new Date(now.getTime() + 3600000),
     }
     sessions.set(token, { user, session })
-    response.setHeader("Set-Cookie", cookie + "=" + token + "; Path=/; Secure; HttpOnly; SameSite=Strict")
-    return { token, user }
+    response.setHeader("Set-Cookie", cookie + "=" + token + "; Path=/; Secure; HttpOnly; SameSite=Lax")
+    return { user, session }
   }
 
   const server = createServer(async (request, response) => {
@@ -34,10 +36,29 @@ export async function startAuthFixture() {
     }
 
     const url = new URL(request.url, "http://127.0.0.1")
-    const token = request.headers.cookie?.split(/;\s*/).find(value => value.startsWith(cookie + "="))?.slice(cookie.length + 1)
+    const cookies = new Map((request.headers.cookie ?? "").split(/;\s*/).map(value => value.split("=")))
+    const token = cookies.get(cookie)
     const session = sessions.get(token)
 
+    if (request.method === "GET" && url.pathname === "/auth/mock-google") {
+      const challenge = challenges.get(url.searchParams.get("challenge"))
+      if (!challenge) return send(403, { code: "INVALID_CHALLENGE" })
+      challenge.user = url.searchParams.get("role") === "admin" ? admin : visitor
+      challenge.verifier = randomUUID()
+      const callback = new URL(challenge.callback)
+      callback.searchParams.set("neon_auth_session_verifier", challenge.verifier)
+      response.writeHead(302, { Location: callback.href })
+      return response.end()
+    }
     if (request.method === "GET" && url.pathname === "/auth/get-session") {
+      const verifier = url.searchParams.get("neon_auth_session_verifier")
+      if (verifier) {
+        const key = cookies.get(challengeCookie)
+        const challenge = challenges.get(key)
+        if (challenge?.verifier !== verifier || !challenge.user) return send(403, { code: "INVALID_CHALLENGE" })
+        challenges.delete(key)
+        return send(200, startSession(challenge.user, response))
+      }
       return send(200, session ?? null)
     }
     if (request.method !== "POST") return send(405, { message: "Method not allowed" })
@@ -56,22 +77,26 @@ export async function startAuthFixture() {
       return send(400, { message: "Invalid request" })
     }
 
-    if (url.pathname === "/auth/sign-in/email") {
-      const approved = input.email === admin.email && input.password === adminPassword
-      const unapproved = input.email === visitor.email && input.password === "fixture-password"
-      if (!approved && !unapproved) return send(401, { code: "INVALID_EMAIL_OR_PASSWORD" })
-      return send(200, startSession(approved ? admin : visitor, response))
+    if (url.pathname === "/auth/sign-in/social") {
+      if (input.provider !== "google") return send(400, { code: "INVALID_PROVIDER" })
+      const key = randomUUID()
+      challenges.set(key, { callback: input.callbackURL })
+      response.setHeader("Set-Cookie", challengeCookie + "=" + key + "; Path=/; Secure; HttpOnly; SameSite=None; Partitioned")
+      return send(200, { url: "http://127.0.0.1:" + server.address().port + "/auth/mock-google?challenge=" + key, redirect: false })
     }
 
-    if (url.pathname === "/auth/change-password") {
-      if (session?.user.id !== admin.id) return send(401, { code: "UNAUTHORIZED" })
-      if (input.currentPassword !== adminPassword) return send(400, { code: "INVALID_PASSWORD" })
-      if (!input.revokeOtherSessions) return send(400, { message: "Expected session revocation" })
-      adminPassword = input.newPassword
-      for (const [token, value] of sessions) {
-        if (value.user.id === admin.id) sessions.delete(token)
+    if (url.pathname === "/auth/email-otp/send-verification-otp") {
+      if (session?.user.id !== admin.id || input.email !== admin.email || input.type !== "email-verification") {
+        return send(403, { code: "UNAUTHORIZED" })
       }
-      return send(200, startSession(admin, response))
+      codes.add(input.email)
+      return send(200, { success: true })
+    }
+    if (url.pathname === "/auth/email-otp/verify-email") {
+      if (session?.user.id !== admin.id || input.email !== admin.email || input.otp !== "123456" || !codes.delete(input.email)) {
+        return send(400, { code: "INVALID_OTP" })
+      }
+      return send(200, { status: true, token: null, user: admin })
     }
 
     return send(404, { message: "Not found" })
