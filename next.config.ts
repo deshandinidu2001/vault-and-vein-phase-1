@@ -20,19 +20,23 @@ const nextConfig: NextConfig = {
       "base-uri 'none'", "object-src 'none'",
     ].join("; ");
     return [
-      { source: "/:path*", headers: [
+      // Proxy supplies the nonce policy for sensitive pages. OpenNext can give
+      // configured headers precedence over headers returned by Proxy.
+      { source: "/:path((?!vault8@vein@8(?:/|$)|checkout$|order(?:/|$)).*)", headers: [
         { key: "Content-Security-Policy", value: publicPolicy },
         { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      ] },
+      { source: "/:path*", headers: [
         { key: "X-Frame-Options", value: "DENY" },
         { key: "X-Content-Type-Options", value: "nosniff" },
         { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ...(process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_SITE_URL?.startsWith("https://")
           ? [{ key: "Strict-Transport-Security", value: "max-age=31536000" }] : []),
       ] },
-      ...["/vault8@vein@8/:path*", "/order/:path*", "/api/:path*"].map(source => ({ source, headers: [
+      { source: "/api/:path*", headers: [
         { key: "Cache-Control", value: "private, no-store" },
-        { key: "Referrer-Policy", value: source.startsWith("/vault8@vein@8/") ? "same-origin" : "no-referrer" },
-      ] })),
+        { key: "Referrer-Policy", value: "no-referrer" },
+      ] },
     ];
   },
   turbopack: {
