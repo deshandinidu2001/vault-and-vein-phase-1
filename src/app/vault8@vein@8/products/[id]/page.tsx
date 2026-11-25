@@ -8,8 +8,10 @@ import { readGemCategories } from "@/lib/gem-categories"
 import { cloudinaryConfigured } from "@/lib/cloudinary"
 import { readShopFilterSettings } from "@/lib/shop-filter-settings"
 import { normalizeShopOption, shopFilterConfig } from "@/lib/shop-filter-config"
+import { maxProductPhotos } from "@/lib/product-photo"
 import { saveProduct } from "../../actions"
 import { GalleryEditor } from "./gallery-editor"
+import { PhotoPicker } from "./photo-picker"
 
 const textFields = [
   ["name", "Name"], ["slug", "URL slug"], ["colour", "Colour"], ["clarity", "Clarity"],
@@ -26,10 +28,11 @@ const messages = {
   unavailable: "The stone could not be saved. Check whether its stock status has changed.",
   "photo-config": "Configure Cloudinary before uploading photos.",
   "photo-choice": "Use the product photos section to change existing images.",
-  "photo-invalid": "Choose a JPEG, PNG or WebP image under 3 MB.",
-  "photo-failed": "Cloudinary could not save this image. Try uploading it again.",
+  "photo-invalid": "Choose valid JPEG, PNG or WebP photos.",
+  "photo-size": "The chosen photos must have a combined size of 3 MB or less.",
+  "photo-failed": "Cloudinary could not save the photos. Try uploading them again.",
   "photo-saved": "Product photos updated.",
-  "photo-capacity": "Remove a photo before adding another. Each listing holds up to eight photos.",
+  "photo-capacity": "Choose fewer photos. Each listing holds up to eight photos.",
   "photo-stale": "This listing changed. Check the current photos and try again.",
 }
 
@@ -61,13 +64,9 @@ export default async function EditProduct({ params, searchParams }: PageProps<"/
     {product && product.status !== "available" ? <p>{product.name} is {product.status}. Listing details are locked while the stone is held or sold.</p> :
       <form action={saveProduct.bind(null, product ? id : null)} className="admin-panel grid gap-5 p-5 sm:p-7">
         {!product && <fieldset className="admin-photo-field">
-          <legend className="font-semibold">Product photo</legend>
-          {photosEnabled ? <div className="grid content-start gap-2">
-            <label className="grid gap-1">Upload photo
-              <input className={inputStyle} type="file" name="photo" accept="image/jpeg,image/png,image/webp" aria-describedby="photo-limits" />
-            </label>
-            <p id="photo-limits" className="admin-muted text-sm">JPEG, PNG or WebP, up to 3 MB.</p>
-          </div> : <p className="admin-muted text-sm">Configure Cloudinary to upload product photos.</p>}
+          <legend className="font-semibold">Product photos</legend>
+          {photosEnabled ? <PhotoPicker slots={maxProductPhotos} />
+            : <p className="admin-muted text-sm">Configure Cloudinary to upload product photos.</p>}
         </fieldset>}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {textFields.map(([name, label]) => <label key={name} className="grid gap-2">{label}

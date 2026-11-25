@@ -88,7 +88,7 @@ export async function finishAdminGoogleSignIn(request: NextRequest) {
   response.headers.set("Location", "/vault8@vein@8/verify")
   response.headers.set("Cache-Control", "private, no-store")
   response.cookies.set(attemptCookie, "", { ...cookieOptions, maxAge: 0 })
-  response.cookies.set(googleCookie, issueProof(googleCookie, token, stepLifetime), { ...cookieOptions, maxAge: stepLifetime })
+  response.cookies.set(googleCookie, issueProof(googleCookie, token, adminLifetime), { ...cookieOptions, maxAge: adminLifetime })
   return response
 }
 
@@ -108,7 +108,7 @@ const adminSession = cache(async () => {
   const approved = emailVerified === true && email.toLowerCase() === storeAdminEmail
   const revision = approved ? await adminPinRevision() : null
   const unlocked = revision !== null && validProof(unlockedCookie + ":" + revision, proof, token)
-  if (!unlocked && !googleVerified) return null
+  if (proof ? !unlocked : !googleVerified) return null
   return { id, email, approved, unlocked, revision }
 })
 
@@ -161,8 +161,8 @@ export async function verifyAdminCode(user: { id: string; email: string }, code:
 
   const token = store.get(sessionCookie)?.value
   if (!token) return "unavailable"
-  store.set(googleCookie, issueProof(googleCookie, token, stepLifetime), {
-    ...cookieOptions, maxAge: stepLifetime,
+  store.set(googleCookie, issueProof(googleCookie, token, adminLifetime), {
+    ...cookieOptions, maxAge: adminLifetime,
   })
   return "verified"
 }
@@ -174,7 +174,19 @@ export async function unlockAdminSession(revision: string) {
   store.set(unlockedCookie, issueProof(unlockedCookie + ":" + revision, token, adminLifetime), {
     ...cookieOptions, sameSite: "strict", maxAge: adminLifetime,
   })
-  store.set(googleCookie, "", { ...cookieOptions, maxAge: 0 })
+}
+
+export async function lockAdminSession() {
+  const store = await cookies()
+  const token = store.get(sessionCookie)?.value
+  // Sessions issued before Google proof was retained can still return to the PIN screen.
+  if (token && store.has(unlockedCookie) && !validProof(googleCookie, store.get(googleCookie)?.value, token)) {
+    const session = await adminSession().catch(() => null)
+    if (session?.approved && session.unlocked) {
+      store.set(googleCookie, issueProof(googleCookie, token, adminLifetime), { ...cookieOptions, maxAge: adminLifetime })
+    }
+  }
+  store.set(unlockedCookie, "", { ...cookieOptions, sameSite: "strict", maxAge: 0 })
 }
 
 export async function endAdminSession() {

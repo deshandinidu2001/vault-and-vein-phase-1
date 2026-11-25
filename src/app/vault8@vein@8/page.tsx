@@ -143,7 +143,11 @@ export default async function AdminPage({ searchParams }: PageProps<"/vault8@vei
               {row.status !== "reserved" && <form action={setProductVisibility.bind(null, row.id, !row.is_published)}>
                 <button type="submit" className="admin-button">{row.is_published ? "Unpublish" : "Publish"}</button>
               </form>}
-              {row.is_published && categoryNames.get(row.gem_type)?.is_visible !== false && <Link className="admin-text-link" href={"/shop/" + row.slug}>View listing</Link>}
+              {row.is_published && categoryNames.get(row.gem_type)?.is_visible !== false && (
+                <form action={"/vault8@vein@8/lock?listing=" + encodeURIComponent(row.slug)} method="post">
+                  <button className="admin-text-link">View listing</button>
+                </form>
+              )}
               {row.is_published && categoryNames.get(row.gem_type)?.is_visible === false && <Link className="admin-text-link" href={nav("filters") + "#filter-type"}>Manage gem type</Link>}
             </div>
             {row.status === "available" && <details className="admin-delete">

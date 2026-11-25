@@ -1,5 +1,7 @@
 import { StoneMedia } from "@/components/product/stone-media"
+import { maxProductPhotos } from "@/lib/product-photo"
 import { editProductGallery } from "../../actions"
+import { PhotoPicker } from "./photo-picker"
 
 export function GalleryEditor({ id, revision, stone, uploads }: {
   id: string
@@ -8,6 +10,7 @@ export function GalleryEditor({ id, revision, stone, uploads }: {
   uploads: boolean
 }) {
   const photos = [stone.image_url, ...(stone.gallery_urls ?? [])].filter((photo): photo is string => Boolean(photo))
+  const slots = maxProductPhotos - photos.length
   return <section id="product-photos" className="admin-panel grid scroll-mt-24 gap-5 p-5 sm:p-7" aria-labelledby="photos-heading">
     <div>
       <h2 id="photos-heading" className="text-3xl">Product photos</h2>
@@ -30,13 +33,10 @@ export function GalleryEditor({ id, revision, stone, uploads }: {
         </div>
       </li>)}
     </ul>}
-    {photos.length >= 8 ? <p className="admin-muted">All eight photo slots are in use.</p> : uploads ? (
-      <form action={editProductGallery.bind(null, id, revision, "add", null)} className="flex flex-wrap items-end gap-3">
-        <label className="grid min-w-0 gap-1 font-semibold">Add photo
-          <input className="admin-field" type="file" name="photo" accept="image/jpeg,image/png,image/webp" required aria-describedby="gallery-limits" />
-        </label>
-        <button type="submit" className="admin-button admin-button-primary">Upload photo</button>
-        <p id="gallery-limits" className="basis-full text-sm admin-muted">JPEG, PNG or WebP, up to 3 MB per image. {photos.length} of 8 photos.</p>
+    {slots <= 0 ? <p className="admin-muted">All eight photo slots are in use.</p> : uploads ? (
+      <form action={editProductGallery.bind(null, id, revision, "add", null)} className="grid justify-items-start gap-3">
+        <PhotoPicker key={revision} slots={slots} hasCover={photos.length > 0} required />
+        <button type="submit" className="admin-button admin-button-primary">Upload photos</button>
       </form>
     ) : <p className="admin-muted">Configure Cloudinary to upload photos.</p>}
   </section>

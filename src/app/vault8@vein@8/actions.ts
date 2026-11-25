@@ -10,7 +10,8 @@ import { expireCheckouts } from "@/lib/checkout"
 import { publicSettingsTag } from "@/lib/backend"
 import { productFlags, productInput, slugInput } from "@/lib/admin-product"
 import { readGemCategories } from "@/lib/gem-categories"
-import { discardProductPhoto, uploadProductPhoto } from "@/lib/cloudinary"
+import { discardProductPhoto, uploadProductPhotos } from "@/lib/cloudinary"
+import { maxProductPhotos } from "@/lib/product-photo"
 import { getStoneOptions } from "@/lib/data"
 import { configurableShopOptions, customShopOption, normalizeShopOption, shopFilterConfig, shopFilterControls } from "@/lib/shop-filter-config"
 import { readShopFilterSettings } from "@/lib/shop-filter-settings"
@@ -25,6 +26,10 @@ function refreshCatalogue() {
 export async function signOut() {
   await endAdminSession()
   redirect("/vault8@vein@8/login")
+}
+
+function selectedPhotos(form: FormData) {
+  return form.getAll("photo").filter((entry): entry is File => entry instanceof File && entry.name !== "")
 }
 
 export async function saveProduct(id: string | null, form: FormData) {
@@ -49,15 +54,11 @@ export async function saveProduct(id: string | null, form: FormData) {
     redirect(returnTo + "?result=invalid")
   }
 
-  const file = form.get("photo")
-  const hasPhoto = file instanceof File && file.size > 0
-  if (id && hasPhoto) redirect(returnTo + "?result=photo-choice#product-photos")
-  let newPhoto: string | null = null
-  if (hasPhoto) {
-    const upload = await uploadProductPhoto(file)
-    if ("error" in upload) redirect(returnTo + "?result=" + upload.error)
-    newPhoto = upload.url
-  }
+  const files = selectedPhotos(form)
+  if (id && files.length) redirect(returnTo + "?result=photo-choice#product-photos")
+  const upload = await uploadProductPhotos(files, maxProductPhotos)
+  if ("error" in upload) redirect(returnTo + "?result=" + upload.error)
+  const photos = upload.urls
   try {
     if (id) {
       const { count } = await db.product.updateMany({
@@ -65,14 +66,16 @@ export async function saveProduct(id: string | null, form: FormData) {
       })
       if (count === 0) throw new Error("Listing is no longer available")
     } else {
-      await db.product.create({ data: { ...input.data, image_url: newPhoto, tint: "#28654f" } })
+      await db.product.create({
+        data: { ...input.data, image_url: photos[0] ?? null, gallery_urls: photos.slice(1), tint: "#28654f" },
+      })
     }
   } catch (error) {
-    if (newPhoto) {
-      // Confirm an interrupted write did not save the uploaded photo.
-      const saved = await db.product.findFirst({ where: { image_url: newPhoto }, select: { id: true } })
+    if (photos.length) {
+      // Confirm an interrupted write did not save the uploaded photos.
+      const saved = await db.product.findFirst({ where: { image_url: { in: photos } }, select: { id: true } })
         .catch(() => undefined)
-      if (saved === null) await discardProductPhoto(newPhoto)
+      if (saved === null) await Promise.all(photos.map(discardProductPhoto))
     }
     redirect(returnTo + "?result=" + (isDuplicate(error) ? "duplicate" : "unavailable"))
   }
@@ -91,16 +94,15 @@ export async function editProductGallery(id: string, revision: string, operation
   if (!current || current.gallery_revision !== revision) redirect(url("photo-stale"))
 
   const photos = [current.image_url, ...current.gallery_urls].filter((entry): entry is string => Boolean(entry))
-  let upload: string | null = null
+  let uploaded: string[] = []
   let removed: string | null = null
   if (operation === "add") {
-    if (photos.length >= 8) redirect(url("photo-capacity"))
-    const file = form.get("photo")
-    if (!(file instanceof File) || !file.size) redirect(url("photo-invalid"))
-    const result = await uploadProductPhoto(file)
-    if (!result.url) redirect(url(result.error ?? "photo-failed"))
-    upload = result.url
-    photos.push(upload)
+    const files = selectedPhotos(form)
+    if (files.length === 0) redirect(url("photo-invalid"))
+    const result = await uploadProductPhotos(files, maxProductPhotos - photos.length)
+    if ("error" in result) redirect(url(result.error))
+    uploaded = result.urls
+    photos.push(...uploaded)
   } else {
     const index = photo ? photos.indexOf(photo) : -1
     if (index < 0 || (operation !== "cover" && operation !== "remove")) redirect(url("photo-stale"))
@@ -114,12 +116,13 @@ export async function editProductGallery(id: string, revision: string, operation
     where: { id, gallery_revision: revision, status: "available", archived_at: null, is_sample: false },
   }).catch(() => null)
   if (!result?.count) {
-    if (upload) {
+    if (uploaded.length) {
       const stored = await db.product.findUnique({
         where: { id }, select: { image_url: true, gallery_urls: true },
       }).catch(() => undefined)
-      if (stored !== undefined && stored?.image_url !== upload && !stored?.gallery_urls.includes(upload)) {
-        await discardProductPhoto(upload)
+      if (stored !== undefined) {
+        const unused = uploaded.filter((image) => stored?.image_url !== image && !stored?.gallery_urls.includes(image))
+        await Promise.all(unused.map(discardProductPhoto))
       }
     }
     redirect(url("photo-stale"))
