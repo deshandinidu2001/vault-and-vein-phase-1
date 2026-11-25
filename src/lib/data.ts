@@ -1,11 +1,9 @@
 import "server-only"
-import { mockStones } from "@/data/stones"
 import { stoneCategory, type Stone } from "@/types/stone"
 import { cache } from "react"
 import { connection } from "next/server"
 import { catalogueConfigured, CatalogueUnavailableError, database } from "./backend"
 import { getGemCategories } from "./gem-categories"
-import { gemModelCut } from "@/components/three/gem-shape"
 import { normalizeShopOption, shopFilterConfig } from "./shop-filter-config"
 import { getShopFilterSettings } from "./shop-filter-settings"
 import type { Prisma } from "@/generated/prisma/client"
@@ -13,6 +11,7 @@ import type { GemCategory } from "@/types/stone"
 
 const catalogueFilter = {
   is_published: true,
+  is_sample: false,
   archived_at: null,
   category: { is_visible: true },
 } satisfies Prisma.ProductWhereInput
@@ -21,7 +20,7 @@ const catalogueFields = {
   id: true, slug: true, name: true, gem_type: true, category: { select: { name: true } },
   cut: true, carat: true, length_mm: true, width_mm: true, depth_mm: true, colour: true,
   clarity: true, treatment: true, origin: true, description: true, price_lkr: true,
-  status: true, reserved_until: true, is_featured: true, is_sample: true, tint: true,
+  status: true, reserved_until: true, is_featured: true, is_sample: true,
   certified: true, collections: true, image_url: true,
 } satisfies Prisma.ProductSelect
 
@@ -33,14 +32,13 @@ function catalogueStone<T extends Prisma.ProductGetPayload<{ select: typeof cata
     ...stone,
     status: expired ? "available" as const : stone.status as Stone["status"],
     categoryName: category.name,
-    model_key: gemModelCut(stone.cut),
     carat: stone.carat.toNumber(), length_mm: stone.length_mm.toNumber(),
     width_mm: stone.width_mm.toNumber(), depth_mm: stone.depth_mm.toNumber(),
   }
 }
 
 const loadCatalogue = cache(async (): Promise<Stone[]> => {
-  if (!catalogueConfigured) return mockStones.map((stone) => ({ ...stone, is_sample: true }))
+  if (!catalogueConfigured) return []
   await connection()
   try {
     const products = await database().product.findMany({
@@ -125,10 +123,7 @@ async function selectPreview(limit: number) {
 }
 
 export const getStoneBySlug = cache(async (slug: string) => {
-  if (!catalogueConfigured) {
-    const stone = (await loadCatalogue()).find(stone => stone.slug === slug)
-    return stone && { ...stone, gallery_urls: [] as string[] }
-  }
+  if (!catalogueConfigured) return undefined
   await connection()
   try {
     const product = await database().product.findUnique({
@@ -142,8 +137,7 @@ export const getStoneBySlug = cache(async (slug: string) => {
 })
 
 export async function getFeatured(limit = 8) {
-  if (catalogueConfigured) return selectPreview(limit)
-  return [...await loadCatalogue()].sort(featuredFirst).slice(0, limit)
+  return catalogueConfigured ? selectPreview(limit) : []
 }
 
 export async function getRelated(stone: Stone, limit = 4) {

@@ -6,7 +6,6 @@ import { ShopSkeleton } from "@/components/shop/shop-skeleton"
 import { getStoneOptions, getStones, parseStoneFilters, type StoneFilters } from "@/lib/data"
 
 import { pageMetadata } from "@/lib/seo"
-import { catalogueConfigured } from "@/lib/backend"
 
 export const metadata = pageMetadata("Shop", "Browse and filter cut and polished gemstones in the Vault & Vein catalogue.", "/shop")
 
@@ -26,7 +25,7 @@ async function Results({ filters, query }: { filters: StoneFilters; query: Query
   const filtering = Object.entries(filters).some(([key, value]) => key !== "page" && key !== "sort" && value !== undefined)
   return <section id="results" className="space-y-6" aria-labelledby="results-title">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h2 id="results-title" className="text-4xl">{catalogueConfigured ? "Stones" : "Sample stones"}</h2>
+      <h2 id="results-title" className="text-4xl">Stones</h2>
       <p role="status" className="text-sm text-muted-foreground">{total} {total === 1 ? "stone" : "stones"} found</p>
     </div>
     {stones.length ? <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -66,7 +65,7 @@ export default function ShopPage({ searchParams }: { searchParams: Promise<Query
     <div className="space-y-5">
       <p className="eyebrow text-[#785520]">The catalogue</p>
       <h1>Shop the stones.</h1>
-      <p>Compare cuts, colours and dimensions across the collection.{!catalogueConfigured && " Sample prices, availability and report details are illustrative."}</p>
+      <p>Compare cuts, colours and dimensions across the collection.</p>
     </div>
     <Suspense fallback={<ShopSkeleton />}>
       <Catalogue searchParams={searchParams} />

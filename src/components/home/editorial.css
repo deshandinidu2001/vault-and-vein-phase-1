@@ -1,5 +1,4 @@
-.viewer-controls .icon-button { background-color: #f6f1e7; color: #06251c; }
-.home-content .section { padding-block: clamp(2.4rem, 4vw, 4.75rem); }
+.home-content .section { padding-block: clamp(3rem, 4.6vw, 5.4rem); }
 
 .collection-panel { display: grid; gap: clamp(1rem, 1.6vw, 1.6rem); background-color: #f6f1e7; }
 .collection-heading { display: grid; gap: 1rem; align-items: end; }
@@ -182,7 +181,6 @@
   transition: border-color .25s;
 }
 
-.gallery-card .stone-art img.gem-illustration { padding: 8%; }
 .gallery-card:hover .stone-art, .gallery-card:focus-within .stone-art { border-color: #c9a24b; }
 .gallery-card:hover .stone-art img, .gallery-card:focus-within .stone-art img { scale: 1.06; }
 .gallery-open::after { position: absolute; inset: 0; border-radius: 1rem; content: ""; }

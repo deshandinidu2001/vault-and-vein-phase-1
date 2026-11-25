@@ -6,7 +6,7 @@ const errors = {
   "google-failed": "Google sign-in could not be completed. Try again.",
 }
 
-export default async function AdminLogin({ searchParams }: PageProps<"/admin/login">) {
+export default async function AdminLogin({ searchParams }: PageProps<"/vault8@vein@8/login">) {
   const { result } = await searchParams
   const error = typeof result === "string" && Object.hasOwn(errors, result) ? errors[result as keyof typeof errors] : null
   return <section className="admin-panel mx-auto max-w-md space-y-6 p-6 sm:p-9">

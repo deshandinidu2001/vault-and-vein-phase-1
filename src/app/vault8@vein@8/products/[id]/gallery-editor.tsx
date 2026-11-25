@@ -4,7 +4,7 @@ import { editProductGallery } from "../../actions"
 export function GalleryEditor({ id, revision, stone, uploads }: {
   id: string
   revision: string
-  stone: { cut: string; tint: string; image_url?: string | null; gallery_urls?: string[] }
+  stone: { image_url?: string | null; gallery_urls?: string[] }
   uploads: boolean
 }) {
   const photos = [stone.image_url, ...(stone.gallery_urls ?? [])].filter((photo): photo is string => Boolean(photo))

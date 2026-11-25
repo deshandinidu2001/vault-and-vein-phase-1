@@ -29,6 +29,13 @@ async function FeaturedGallery() {
       <Link href="/shop" className="pill pill-gold">Explore the shop</Link>
     </div></section>
   const [stones, { categories }] = result
+  if (stones.length === 0) return <section id="gallery" className="section dark-panel">
+    <div className="wrap space-y-4">
+      <h2>The gem gallery</h2>
+      <p>New listings will appear here. Contact us if you’re looking for a particular stone.</p>
+      <Link href="/contact" className="pill pill-gold">Contact us</Link>
+    </div>
+  </section>
   return <GemGallery stones={stones} categoryLabels={Object.fromEntries(categories.map(({ slug, name }) => [slug, name]))} />
 }
 

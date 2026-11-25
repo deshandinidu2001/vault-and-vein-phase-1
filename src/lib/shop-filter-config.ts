@@ -1,4 +1,3 @@
-import { gemCuts } from "@/components/three/gem-shape"
 import type { GemCategory } from "@/types/stone"
 
 export const shopFilterControls = {
@@ -63,7 +62,7 @@ export function shopFilterConfig(
   }
   for (const [value, label] of Object.entries(sortLabels)) add("sort", value, label)
   for (const [value, label] of Object.entries(collectionLabels)) add("collection", value, label)
-  for (const cut of gemCuts) add("cut", cut, cut)
+  for (const cut of ["Oval", "Cushion", "Round", "Emerald", "Pear", "Trillion"]) add("cut", cut, cut)
   for (const product of products) {
     for (const key of ["cut", "colour", "origin"] as const) add(key, product[key], product[key])
     for (const value of product.collections) add("collection", value, value)

@@ -45,7 +45,7 @@ function Details({ record, labels }: { record: unknown; labels: Record<string, s
   </dl>
 }
 
-export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
+export default async function AdminPage({ searchParams }: PageProps<"/vault8@vein@8">) {
   const db = await requireAdminDatabase()
   const { email } = await adminIdentity()
   const query = await searchParams
@@ -59,7 +59,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
     const params = new URLSearchParams({ view: panel })
     if (pageNumber > 1) params.set("page", String(pageNumber))
     if (panel === "inventory" && filter) params.set("status", filter)
-    return "/admin?" + params
+    return "/vault8@vein@8?" + params
   }
   const result = typeof query.result === "string" && Object.hasOwn(results, query.result) ? results[query.result as keyof typeof results] : null
 
@@ -74,9 +74,9 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   const paging = { skip: offset, take: pageSize + 1 }
   const records = section === "inventory"
     ? await db.product.findMany({
-      ...paging, where: { archived_at: null, status }, orderBy: [{ name: "asc" }, { id: "asc" }],
+      ...paging, where: { archived_at: null, is_sample: false, status }, orderBy: [{ name: "asc" }, { id: "asc" }],
       select: { id: true, slug: true, name: true, gem_type: true, status: true, price_lkr: true,
-        is_published: true, is_sample: true, cut: true, tint: true, image_url: true },
+        is_published: true, image_url: true },
     })
     : section === "orders" ? await db.order.findMany({
       ...paging, orderBy: [{ created_at: "desc" }, { id: "asc" }],
@@ -91,7 +91,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
     <div className="admin-titlebar">
       <h1>Store admin</h1>
       <div className="flex flex-wrap items-center justify-end gap-x-4">
-        <Link href="/admin/account" className="admin-text-link">{email || "Account settings"}</Link>
+        <Link href="/vault8@vein@8/account" className="admin-text-link">{email || "Account settings"}</Link>
         <form action={signOut}><button type="submit" className="admin-button">Sign out</button></form>
       </div>
     </div>
@@ -104,7 +104,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
     {result && <p className="admin-notice" role="status">{result}</p>}
     <div className="flex flex-wrap items-center justify-between gap-4">
       <h2 id="admin-panel-heading">{panels[section]}</h2>
-      {section === "inventory" && <Link href="/admin/products/new" className="admin-button admin-button-primary" prefetch={false}>Add listing</Link>}
+      {section === "inventory" && <Link href="/vault8@vein@8/products/new" className="admin-button admin-button-primary" prefetch={false}>Add listing</Link>}
     </div>
     {section === "inventory" && <nav aria-label="Stock status" className="admin-filters">
       {[undefined, ...stockFilters].map((filter) => <Link key={filter ?? "all"} href={nav(section, 1, filter)}
@@ -129,7 +129,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
               <div className="min-w-0">
                 <h3 className="wrap-anywhere">{row.name}</h3>
                 <p className="admin-muted wrap-anywhere text-sm">
-                  {categoryNames.get(row.gem_type)?.name ?? row.gem_type}{row.is_sample && " · Sample"}
+                  {categoryNames.get(row.gem_type)?.name ?? row.gem_type}
                   {categoryNames.get(row.gem_type)?.is_visible === false && " · Category hidden"}
                 </p>
               </div>
@@ -139,7 +139,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
               <p className="admin-muted text-sm"><span className="admin-stock-status" data-status={row.status}>{row.status}</span> · {row.is_published ? "Published" : "Draft"}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {row.status === "available" && <Link className="admin-button" href={"/admin/products/" + row.id} prefetch={false}>Edit listing</Link>}
+              {row.status === "available" && <Link className="admin-button" href={"/vault8@vein@8/products/" + row.id} prefetch={false}>Edit listing</Link>}
               {row.status !== "reserved" && <form action={setProductVisibility.bind(null, row.id, !row.is_published)}>
                 <button type="submit" className="admin-button">{row.is_published ? "Unpublish" : "Publish"}</button>
               </form>}

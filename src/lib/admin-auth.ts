@@ -24,7 +24,7 @@ const sessionDataCookie = "__Secure-neon-auth.local.session_data"
 const attemptCookie = "__Host-vault-admin-oauth"
 const googleCookie = "__Host-vault-admin-google"
 const verifiedCookie = "__Host-vault-admin-verified"
-const oauthCallback = "/admin/oauth/callback"
+const oauthCallback = "/vault8@vein@8/oauth/callback"
 const stepLifetime = 10 * 60
 const adminLifetime = 8 * 60 * 60
 const cookieOptions = { path: "/", httpOnly: true, secure: true, sameSite: "lax" } as const
@@ -62,7 +62,7 @@ export async function startAdminGoogleSignIn(origin: string) {
   const { data, error } = await auth().signIn.social({
     provider: "google",
     callbackURL: callback.href,
-    errorCallbackURL: new URL("/admin/login?result=google-failed", origin).href,
+    errorCallbackURL: new URL("/vault8@vein@8/login?result=google-failed", origin).href,
     disableRedirect: true,
   })
   if (error || !data?.url || !URL.canParse(data.url)) return null
@@ -75,18 +75,18 @@ export async function startAdminGoogleSignIn(origin: string) {
 }
 
 export async function finishAdminGoogleSignIn(request: NextRequest) {
-  const failure = () => new NextResponse(null, { status: 303, headers: { Location: "/admin/login?result=google-failed" } })
+  const failure = () => new NextResponse(null, { status: 303, headers: { Location: "/vault8@vein@8/login?result=google-failed" } })
   const attempt = request.cookies.get(attemptCookie)?.value
   const { searchParams } = request.nextUrl
   if (!adminAuthConfigured || !attempt || searchParams.get("attempt") !== attempt ||
     !searchParams.get("neon_auth_session_verifier")) return failure()
 
   // Neon exchanges the verifier and its challenge cookie for a session on this origin.
-  const response = await auth().middleware({ loginUrl: "/admin/login" })(request)
+  const response = await auth().middleware({ loginUrl: "/vault8@vein@8/login" })(request)
   const token = response.cookies.get(sessionCookie)?.value
   if (!token || !response.headers.has("location")) return failure()
 
-  response.headers.set("Location", "/admin/verify")
+  response.headers.set("Location", "/vault8@vein@8/verify")
   response.headers.set("Cache-Control", "private, no-store")
   response.cookies.set(attemptCookie, "", { ...cookieOptions, maxAge: 0 })
   response.cookies.set(googleCookie, issueProof(googleCookie, token, stepLifetime), { ...cookieOptions, maxAge: stepLifetime })
@@ -110,9 +110,9 @@ const adminSession = cache(async () => {
 
 export async function pendingAdminIdentity() {
   const session = await adminSession()
-  if (!session) redirect("/admin/login")
-  if (!session.approved) redirect("/admin/login?result=denied")
-  if (session.verified) redirect("/admin")
+  if (!session) redirect("/vault8@vein@8/login")
+  if (!session.approved) redirect("/vault8@vein@8/login?result=denied")
+  if (session.verified) redirect("/vault8@vein@8")
   return session
 }
 
@@ -121,7 +121,7 @@ async function emailOtp(operation: "send-verification-otp" | "verify-email", bod
   const incoming = await headers()
   const origin = incoming.get("origin")
   if (!origin || !URL.canParse(origin)) throw new Error("Missing verification request origin")
-  const request = new Request(new URL("/admin/verify", origin), {
+  const request = new Request(new URL("/vault8@vein@8/verify", origin), {
     method: "POST",
     headers: { Origin: origin, Cookie: incoming.get("cookie") ?? "", "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -173,9 +173,9 @@ export async function endAdminSession() {
 
 export const adminIdentity = cache(async () => {
   const session = await adminSession()
-  if (!session) redirect("/admin/login")
-  if (!session.approved) redirect("/admin/login?result=denied")
-  if (!session.verified) redirect("/admin/verify")
+  if (!session) redirect("/vault8@vein@8/login")
+  if (!session.approved) redirect("/vault8@vein@8/login?result=denied")
+  if (!session.verified) redirect("/vault8@vein@8/verify")
   return { id: session.id, email: session.email }
 })
 

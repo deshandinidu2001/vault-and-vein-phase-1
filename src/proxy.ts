@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 
 export function proxy(request: NextRequest) {
-  const admin = request.nextUrl.pathname === "/admin" || request.nextUrl.pathname.startsWith("/admin/")
+  const admin = request.nextUrl.pathname === "/vault8@vein@8" || request.nextUrl.pathname.startsWith("/vault8@vein@8/")
   const paymentHost = process.env.PAYHERE_MODE === "live" ? "https://www.payhere.lk" : "https://sandbox.payhere.lk"
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64")
   const policy = [
@@ -15,8 +15,9 @@ export function proxy(request: NextRequest) {
   const response = NextResponse.next({ request: { headers } })
   response.headers.set("Content-Security-Policy", policy)
   response.headers.set("Cache-Control", "private, no-store")
-  response.headers.set("Referrer-Policy", "no-referrer")
+  // Keep the origin on same-origin admin form submissions before React hydrates.
+  response.headers.set("Referrer-Policy", admin ? "same-origin" : "no-referrer")
   return response
 }
 
-export const config = { matcher: ["/admin/:path*", "/checkout", "/order/:path*"] }
+export const config = { matcher: ["/vault8@vein@8/:path*", "/checkout", "/order/:path*"] }

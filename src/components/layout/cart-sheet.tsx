@@ -12,9 +12,7 @@ export function CartSheet({ paymentsEnabled }: { paymentsEnabled: boolean }) {
   const { overlay, closeOverlay, openEnquiry } = useUi()
   const { items, remove } = useCart()
   const total = items.reduce((sum, item) => sum + item.price_lkr, 0)
-  const payable = items.filter(({ is_sample }) => is_sample === false)
-  const hasSamples = payable.length !== items.length
-  const canCheckout = paymentsEnabled && payable.length > 0 && payable.length <= 12
+  const canCheckout = paymentsEnabled && items.length > 0 && items.length <= 12
 
   return (
     <Sheet open={overlay === "cart"} onOpenChange={(open) => { if (!open && useUi.getState().overlay === "cart") closeOverlay() }}>
@@ -35,7 +33,7 @@ export function CartSheet({ paymentsEnabled }: { paymentsEnabled: boolean }) {
               <div className="min-w-0">
                 <Link href={"/shop/" + item.slug} onClick={closeOverlay} className="flex min-h-11 items-center font-semibold hover:underline">{item.name}</Link>
                 <p className="text-sm text-muted-foreground">{item.carat} ct · <StonePrice lkr={item.price_lkr} /></p>
-                {item.is_sample === false && items.length > 1 && paymentsEnabled && (
+                {items.length > 1 && paymentsEnabled && (
                   <a href={"/checkout?" + new URLSearchParams({ item: item.id })}
                     className="line-link text-sm" aria-label={"Pay for this stone: " + item.name}>Pay for this stone <ArrowUpRight size={15} aria-hidden="true" /></a>
                 )}
@@ -45,15 +43,13 @@ export function CartSheet({ paymentsEnabled }: { paymentsEnabled: boolean }) {
               </button>
             </li>)}
           </ul>
-          <div className="flex flex-wrap justify-between gap-2 font-semibold"><span>{!payable.length ? "Sample total" : "Stone subtotal"}</span><StonePrice lkr={total} /></div>
-          {hasSamples && payable.length > 0 && <p className="text-sm text-muted-foreground">You can ask us about the sample stones in your cart.</p>}
+          <div className="flex flex-wrap justify-between gap-2 font-semibold"><span>Stone subtotal</span><StonePrice lkr={total} /></div>
           <section className="grid gap-3 rounded-xl border border-emerald/15 bg-[#e8ebe0] p-4" aria-labelledby="cart-checkout-title">
             <h2 id="cart-checkout-title" className="flex items-center gap-2 font-sans text-base font-semibold"><CreditCard size={18} aria-hidden="true" /> Online checkout</h2>
             <p className="text-sm text-muted-foreground">
-              {!payable.length ? "You can ask us about the sample stones in your cart."
-                : !paymentsEnabled ? "Online payment is currently unavailable."
-                  : payable.length > 12 ? "Pay for a single stone or reduce the cart to 12 payable stones."
-                    : "Review delivery and pay in LKR through PayHere."}
+              {!paymentsEnabled ? "Online payment is currently unavailable."
+                : items.length > 12 ? "Pay for a single stone or reduce the cart to 12 stones."
+                  : "Review delivery and pay in LKR through PayHere."}
             </p>
             {canCheckout
               // Load checkout as a new document to install its security policy.

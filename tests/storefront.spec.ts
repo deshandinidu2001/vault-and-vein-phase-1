@@ -1,14 +1,13 @@
 import AxeBuilder from "@axe-core/playwright"
 import { expect, test, type Page } from "@playwright/test"
 
-const product = "/shop/monsoon-blue"
-const routes = ["/", "/shop", "/about", "/contact", "/shipping", "/returns", "/privacy", "/terms", product, "/checkout"]
+const routes = ["/", "/shop", "/about", "/contact", "/shipping", "/returns", "/privacy", "/terms", "/checkout"]
 
 test.beforeEach(async ({ page }) => {
   await page.route("https://maps.google.com/**", (route) => route.abort())
 })
 
-test("hero slide controls, gallery filtering and a keyboard-operable FAQ", async ({ page, isMobile }) => {
+test("hero slide controls, empty gallery and a keyboard-operable FAQ", async ({ page, isMobile }) => {
   await page.goto("/")
   const dots = page.getByRole("group", { name: "Choose an image" })
   await expect(dots.getByRole("button")).toHaveCount(5)
@@ -31,22 +30,13 @@ test("hero slide controls, gallery filtering and a keyboard-operable FAQ", async
     const enquiryButton = page.locator(".hero-actions").getByRole("button", { name: "Ask about a stone" })
     await expect(enquiryButton).toHaveCSS("color", "rgb(246, 241, 231)")
     await enquiryButton.hover()
-    await expect(enquiryButton).toHaveCSS("color", "rgb(6, 37, 28)")
-    await expect(enquiryButton).toHaveCSS("background-color", "rgb(246, 241, 231)")
+    await expect(enquiryButton).toHaveCSS("color", "rgb(239, 215, 159)")
+    await expect(enquiryButton).toHaveCSS("background-color", "rgb(11, 61, 46)")
   }
 
   const gallery = page.locator("#gallery")
-  await gallery.getByRole("radio", { name: "Spinel" }).click()
-  const open = gallery.getByRole("button", { name: "Open this stone: Mulberry Spinel" })
-  await open.click()
-  const dialog = page.getByRole("dialog")
-  await expect(dialog.getByRole("heading", { name: "Mulberry Spinel" })).toBeVisible()
-  await dialog.getByRole("button", { name: "Next stone" }).click()
-  await expect(dialog.getByRole("heading", { name: "Mulberry Spinel" })).toHaveCount(0)
-  await page.keyboard.press("Escape")
-  await expect(dialog).toHaveCount(0)
-  await expect(open).toBeFocused()
-  await expect(gallery.getByRole("link", { name: "Explore more in the shop" })).toHaveAttribute("href", "/shop?type=spinel")
+  await expect(gallery.getByText("New listings will appear here.", { exact: false })).toBeVisible()
+  await expect(gallery.getByRole("link", { name: "Contact us" })).toHaveAttribute("href", "/contact")
 
   const faq = page.getByRole("button", { name: "How do I buy a stone?" })
   await faq.press("Enter")
@@ -74,76 +64,48 @@ test("collection advances horizontally with the section pinned on desktop", asyn
   }
 })
 
-test("shop search, filters, sort, empty states and pagination", async ({ page }) => {
+test("shop filters and empty catalogue states", async ({ page, request }) => {
   await page.goto("/shop")
   const search = page.getByRole("searchbox", { name: "Search the catalogue" })
   await expect(search).toHaveCount(1)
-  await expect(page.locator("#results li")).toHaveCount(8)
-  await page.getByRole("link", { name: "Next", exact: true }).click()
-  await expect(page).toHaveURL(/page=2#results/)
-  await expect(page.locator("#results li")).toHaveCount(4)
+  await expect(page.getByText("No stones are listed right now.")).toBeVisible()
+  await expect(page.locator("#results li")).toHaveCount(0)
+  await expect(page.getByRole("navigation", { name: "Catalogue pages" })).toHaveCount(0)
+
   await search.fill("does not exist")
   await page.getByRole("button", { name: "Apply filters" }).click()
   await expect(page.getByText("No stones match these filters.")).toBeVisible()
   await page.getByRole("link", { name: "Clear filters" }).last().click()
-  await expect(page).toHaveURL(/\/shop$/)
-  await expect(page.locator("#results li")).toHaveCount(8)
+  await expect(page.getByText("No stones are listed right now.")).toBeVisible()
   const filters = page.getByRole("button", { name: "Filters", exact: true })
   await filters.click()
   await expect(filters).toHaveAttribute("aria-expanded", "true")
   await page.getByLabel("Gem type").selectOption("sapphire")
-  await page.getByLabel("Sort by").selectOption("price-asc")
   await page.getByRole("button", { name: "Apply filters" }).click()
   await expect(page).toHaveURL(/type=sapphire/)
-  const results = page.locator("#results article")
-  await expect(results).toHaveCount(3)
-  const prices = await results.locator(".tabular-nums").allTextContents()
-  const lkr = prices.map((value) => Number(value.replace(/[^0-9]/g, "")))
-  expect(lkr).toEqual([...lkr].sort((a, b) => a - b))
+  await expect(page.getByText("No stones match these filters.")).toBeVisible()
+  expect((await request.get("/shop/silver-smoke")).status()).toBe(404)
 })
 
-test("product illustration, description and responsive specifications", async ({ page }) => {
-  await page.goto(product)
-  await expect(page.getByRole("tablist", { name: "Stone views" })).toHaveCount(0)
-  await expect(page.getByRole("img", { name: "Illustration of Monsoon Blue", exact: true })).toBeVisible()
-  await expect(page.getByRole("region", { name: "Description" })).toBeVisible()
-  const specs = page.getByRole("region", { name: "Specifications" })
-  await expect(specs.getByText("Dimensions", { exact: true })).toBeVisible()
-  await expect(specs.getByText("Oval", { exact: true })).toBeVisible()
-})
-
-test("cart persistence, currency switch, asking about a stone and removal", async ({ page }) => {
-  await page.goto(product)
-  await page.getByRole("button", { name: "Currency LKR. Switch currency" }).click()
-  await expect(page.getByRole("button", { name: "Currency USD. Switch currency" })).toBeVisible()
-  await page.getByRole("button", { name: "Add to Cart" }).click()
-  await expect(page.getByRole("button", { name: "In your cart" })).toBeDisabled()
-  await page.reload()
-  await page.getByRole("button", { name: "Open cart, 1 stones" }).click()
+test("old sample cart entries are removed", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("vault-and-vein-cart", JSON.stringify({
+      state: { items: [{ id: "vv-001", slug: "monsoon-blue", name: "Monsoon Blue", is_sample: true }] },
+      version: 0,
+    }))
+  })
+  await page.goto("/shop")
   const cart = page.getByRole("dialog", { name: "Your cart" })
-  await expect(cart.getByRole("link", { name: "Monsoon Blue" })).toHaveAttribute("href", product)
-  await expect(cart.getByText("Sample total")).toBeVisible()
-  await expect(cart.getByRole("link", { name: "Go to checkout" })).toHaveCount(0)
-  await expect(cart.getByRole("button", { name: "Go to checkout" })).toBeDisabled()
-  await cart.getByRole("button", { name: "Ask about this stone" }).click()
-
-  const enquiry = page.getByRole("dialog", { name: "Ask about a stone" })
-  await expect(enquiry.getByText("Monsoon Blue")).toBeVisible()
-  await enquiry.getByLabel("Name", { exact: true }).fill("Test Visitor")
-  await enquiry.getByLabel("Mobile", { exact: true }).fill("+94 77 123 4567")
-  await enquiry.getByLabel("Email", { exact: true }).fill("test@example.test")
-  await expect(enquiry.getByLabel("Gem of interest")).toHaveValue("Sapphire")
-  await enquiry.getByLabel("Budget range").selectOption("Prefer to discuss")
-  await enquiry.getByRole("button", { name: "Send question" }).click()
-  await expect(page.getByText("Preview complete. Your question was not sent.")).toBeVisible()
-  await page.keyboard.press("Escape")
-  await page.getByRole("button", { name: "Open cart, 1 stones" }).click()
-  await cart.getByRole("button", { name: "Remove Monsoon Blue" }).click()
-  await expect(cart.getByText("Your cart is empty.")).toBeVisible()
+  await expect(async () => {
+    if (!await cart.isVisible()) await page.getByRole("button", { name: "Open cart, 0 stones" }).click()
+    await expect(cart.getByText("Your cart is empty.")).toBeVisible({ timeout: 2000 })
+  }).toPass({ timeout: 10000 })
+  await expect(cart.getByText("Monsoon Blue")).toHaveCount(0)
 })
 
 test("contact validation and submission, admin guard and safe preview checkout", async ({ page, request }) => {
   await page.goto("/contact")
+  await expect(page.getByRole("link", { name: "vault8vein@gmail.com" })).toHaveAttribute("href", "mailto:vault8vein@gmail.com")
   const intro = await page.getByRole("main").getByText("Contact", { exact: true }).boundingBox()
   const header = await page.locator(".header-row").boundingBox()
   expect(intro!.y - header!.height).toBeLessThan(60)
@@ -156,9 +118,9 @@ test("contact validation and submission, admin guard and safe preview checkout",
   await page.getByRole("button", { name: "Send message" }).click()
   await expect(page.getByText("Preview complete. Your message was not sent.")).toBeVisible()
 
-  for (const route of ["/admin", "/admin?view=orders", "/admin?view=inbox", "/admin/products/new"]) {
+  for (const route of ["/vault8@vein@8", "/vault8@vein@8?view=orders", "/vault8@vein@8?view=inbox", "/vault8@vein@8/products/new"]) {
     await page.goto(route)
-    await expect(page).toHaveURL(/\/admin\/login$/)
+    await expect(page).toHaveURL(/\/vault8@vein@8\/login$/)
     await expect(page.getByRole("heading", { name: "Admin sign-in" })).toBeVisible()
     await expect(page.locator(".site-footer")).toHaveCount(0)
   }
@@ -189,8 +151,7 @@ test("footer wordmark fills after it is fully revealed across public pages", asy
   for (const route of routes) {
     await page.goto(route)
     // Catalogue results stream after the page shell and change the footer's position.
-    if (route === "/shop") await expect(page.locator("#results .stone-card").first()).toBeVisible()
-    if (route === product) await expect(page.getByRole("heading", { name: "Related stones" })).toBeVisible()
+    if (route === "/shop") await expect(page.getByText("No stones are listed right now.")).toBeVisible()
     const wordmark = page.locator(".footer-wordmark")
     await expect(wordmark).toBeAttached()
     await page.evaluate(() => document.fonts.ready)
@@ -224,7 +185,7 @@ test("About matches the editorial layout, navigation and responsive accessibilit
   const process = page.locator("section").filter({ has: page.getByRole("heading", { name: "The work in every facet." }) })
   await expect(process.locator("img")).toHaveCount(0)
 
-  for (const url of ["/", "/about", "/shop", product, "/contact", "/checkout", "/admin/login"]) {
+  for (const url of ["/", "/about", "/shop", "/contact", "/checkout", "/vault8@vein@8/login"]) {
     await page.goto(url)
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), url).toBeLessThanOrEqual(1)
@@ -257,8 +218,8 @@ test("shop and policy links, document fragments, sitemap and missing pages", asy
   }
   const map = await request.get("/sitemap.xml")
   expect(map.status()).toBe(200)
-  expect(await map.text()).toContain(product + "</loc>")
+  expect(await map.text()).not.toContain("/shop/monsoon-blue</loc>")
   expect((await request.get("/robots.txt")).status()).toBe(200)
-  expect((await request.get("/images/stones/monsoon-blue")).status()).toBe(200)
+  expect((await request.get("/images/stones/monsoon-blue")).status()).toBe(404)
   expect((await request.get("/shop/does-not-exist")).status()).toBe(404)
 })

@@ -33,7 +33,7 @@ const messages = {
   "photo-stale": "This listing changed. Check the current photos and try again.",
 }
 
-export default async function EditProduct({ params, searchParams }: PageProps<"/admin/products/[id]">) {
+export default async function EditProduct({ params, searchParams }: PageProps<"/vault8@vein@8/products/[id]">) {
   const db = await requireAdminDatabase()
   const { id } = await params
   const { result } = await searchParams
@@ -43,7 +43,7 @@ export default async function EditProduct({ params, searchParams }: PageProps<"/
   if (id !== "new") {
     if (!z.uuid().safeParse(id).success) notFound()
     await expireCheckouts(db)
-    const listing = await db.product.findUnique({ where: { id, archived_at: null } })
+    const listing = await db.product.findUnique({ where: { id, archived_at: null, is_sample: false } })
     if (!listing) notFound()
     product = {
       ...listing, carat: listing.carat.toNumber(), length_mm: listing.length_mm.toNumber(),
@@ -54,7 +54,7 @@ export default async function EditProduct({ params, searchParams }: PageProps<"/
   const revision = product?.gallery_revision
   const message = typeof result === "string" && Object.hasOwn(messages, result) ? messages[result as keyof typeof messages] : null
   return <section className="space-y-6">
-    <Link href="/admin" className="admin-text-link">Back to inventory</Link>
+    <Link href="/vault8@vein@8" className="admin-text-link">Back to inventory</Link>
     <h1>{product ? "Edit listing" : "New listing"}</h1>
     {message && <p className="admin-notice" role={result === "photo-saved" ? "status" : "alert"}>{message}</p>}
     {product?.status === "available" && revision && <GalleryEditor id={id} revision={revision} stone={product} uploads={photosEnabled} />}
@@ -96,9 +96,6 @@ export default async function EditProduct({ params, searchParams }: PageProps<"/
                 step={price ? 1 : .01} defaultValue={product?.[name]} required />
             </label>
           })}
-          <label className="grid gap-2">Illustration tint
-            <input name="tint" className={inputStyle + " p-2"} type="color" defaultValue={product?.tint ?? "#28654f"} />
-          </label>
         </div>
         <label className="grid gap-2">Description
           <textarea className={inputStyle + " py-2"} rows={4} name="description" maxLength={3000} defaultValue={product?.description} required />

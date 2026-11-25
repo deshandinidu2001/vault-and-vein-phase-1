@@ -29,9 +29,9 @@ const nextConfig: NextConfig = {
         ...(process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_SITE_URL?.startsWith("https://")
           ? [{ key: "Strict-Transport-Security", value: "max-age=31536000" }] : []),
       ] },
-      ...["/admin/:path*", "/order/:path*", "/api/:path*"].map(source => ({ source, headers: [
+      ...["/vault8@vein@8/:path*", "/order/:path*", "/api/:path*"].map(source => ({ source, headers: [
         { key: "Cache-Control", value: "private, no-store" },
-        { key: "Referrer-Policy", value: "no-referrer" },
+        { key: "Referrer-Policy", value: source.startsWith("/vault8@vein@8/") ? "same-origin" : "no-referrer" },
       ] })),
     ];
   },

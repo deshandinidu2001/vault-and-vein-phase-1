@@ -19,17 +19,14 @@ export const productInput = z.object({
   origin: shortText,
   description: z.string().trim().min(1).max(3000),
   price_lkr: z.coerce.number().int().min(1).max(100000000),
-  tint: z.string().regex(/^#[0-9a-f]{6}$/i),
   certified: z.boolean(),
   is_featured: z.boolean(),
   is_published: z.boolean(),
-  is_sample: z.boolean(),
   collections: z.array(slugInput).max(32),
 })
 export type ProductInput = z.infer<typeof productInput>
 export const productFlags = [
   { name: "certified", label: "Lab report available" },
   { name: "is_featured", label: "Featured" },
-  { name: "is_sample", label: "Sample listing" },
   { name: "is_published", label: "Published" },
 ] as const

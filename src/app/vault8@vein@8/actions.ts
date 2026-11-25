@@ -16,7 +16,7 @@ import { configurableShopOptions, customShopOption, normalizeShopOption, shopFil
 import { readShopFilterSettings } from "@/lib/shop-filter-settings"
 
 function refreshCatalogue() {
-  revalidatePath("/admin")
+  revalidatePath("/vault8@vein@8")
   revalidatePath("/")
   revalidatePath("/shop")
   revalidatePath("/shop/[slug]", "page")
@@ -24,13 +24,13 @@ function refreshCatalogue() {
 
 export async function signOut() {
   await endAdminSession()
-  redirect("/admin/login")
+  redirect("/vault8@vein@8/login")
 }
 
 export async function saveProduct(id: string | null, form: FormData) {
   const db = await requireAdminDatabase()
-  if (id !== null && !z.uuid().safeParse(id).success) redirect("/admin")
-  const returnTo = id ? "/admin/products/" + id : "/admin/products/new"
+  if (id !== null && !z.uuid().safeParse(id).success) redirect("/vault8@vein@8")
+  const returnTo = id ? "/vault8@vein@8/products/" + id : "/vault8@vein@8/products/new"
   const input = productInput.safeParse({
     ...Object.fromEntries(form),
     ...Object.fromEntries(productFlags.map(({ name }) => [name, form.get(name) === "on"])),
@@ -39,7 +39,7 @@ export async function saveProduct(id: string | null, form: FormData) {
   if (!input.success) redirect(returnTo + "?result=invalid")
   const [categories, settings, existing] = await Promise.all([
     readGemCategories(db), readShopFilterSettings(db),
-    id ? db.product.findFirst({ where: { id, archived_at: null, status: "available" } }) : null,
+    id ? db.product.findFirst({ where: { id, archived_at: null, is_sample: false, status: "available" } }) : null,
   ])
   if (!categories.some(({ slug }) => slug === input.data.gem_type)) redirect(returnTo + "?result=invalid")
   if (id && !existing) redirect(returnTo + "?result=unavailable")
@@ -61,11 +61,11 @@ export async function saveProduct(id: string | null, form: FormData) {
   try {
     if (id) {
       const { count } = await db.product.updateMany({
-        where: { id, status: "available", archived_at: null }, data: input.data,
+        where: { id, status: "available", archived_at: null, is_sample: false }, data: input.data,
       })
       if (count === 0) throw new Error("Listing is no longer available")
     } else {
-      await db.product.create({ data: { ...input.data, image_url: newPhoto } })
+      await db.product.create({ data: { ...input.data, image_url: newPhoto, tint: "#28654f" } })
     }
   } catch (error) {
     if (newPhoto) {
@@ -77,15 +77,15 @@ export async function saveProduct(id: string | null, form: FormData) {
     redirect(returnTo + "?result=" + (isDuplicate(error) ? "duplicate" : "unavailable"))
   }
   refreshCatalogue()
-  redirect("/admin?result=saved")
+  redirect("/vault8@vein@8?result=saved")
 }
 
 export async function editProductGallery(id: string, revision: string, operation: "add" | "cover" | "remove", photo: string | null, form: FormData) {
   const db = await requireAdminDatabase()
-  if (!z.uuid().safeParse(id).success || !z.uuid().safeParse(revision).success) redirect("/admin")
-  const url = (result: string) => "/admin/products/" + id + "?result=" + result + "#product-photos"
+  if (!z.uuid().safeParse(id).success || !z.uuid().safeParse(revision).success) redirect("/vault8@vein@8")
+  const url = (result: string) => "/vault8@vein@8/products/" + id + "?result=" + result + "#product-photos"
   const current = await db.product.findFirst({
-    where: { id, status: "available", archived_at: null },
+    where: { id, status: "available", archived_at: null, is_sample: false },
     select: { image_url: true, gallery_urls: true, gallery_revision: true },
   })
   if (!current || current.gallery_revision !== revision) redirect(url("photo-stale"))
@@ -111,7 +111,7 @@ export async function editProductGallery(id: string, revision: string, operation
 
   const result = await db.product.updateMany({
     data: { image_url: photos[0] ?? null, gallery_urls: photos.slice(1), gallery_revision: randomUUID() },
-    where: { id, gallery_revision: revision, status: "available", archived_at: null },
+    where: { id, gallery_revision: revision, status: "available", archived_at: null, is_sample: false },
   }).catch(() => null)
   if (!result?.count) {
     if (upload) {
@@ -131,17 +131,17 @@ export async function editProductGallery(id: string, revision: string, operation
 
 export async function setProductVisibility(id: string, visible: boolean) {
   const db = await requireAdminDatabase()
-  if (!z.uuid().safeParse(id).success || typeof visible !== "boolean") redirect("/admin")
+  if (!z.uuid().safeParse(id).success || typeof visible !== "boolean") redirect("/vault8@vein@8")
   const result = await db.product.updateMany({
-    where: { id, status: { not: "reserved" }, archived_at: null }, data: { is_published: visible },
+    where: { id, status: { not: "reserved" }, archived_at: null, is_sample: false }, data: { is_published: visible },
   }).catch(() => null)
   if (result?.count) refreshCatalogue()
-  redirect("/admin?result=" + (result?.count ? "saved" : "unavailable"))
+  redirect("/vault8@vein@8?result=" + (result?.count ? "saved" : "unavailable"))
 }
 
 export async function deleteProduct(id: string) {
   const db = await requireAdminDatabase()
-  if (!z.uuid().safeParse(id).success) redirect("/admin")
+  if (!z.uuid().safeParse(id).success) redirect("/vault8@vein@8")
   let count: number
   try {
     await expireCheckouts(db)
@@ -151,17 +151,17 @@ export async function deleteProduct(id: string) {
     })
     count = result.count
   } catch {
-    redirect("/admin?result=unavailable")
+    redirect("/vault8@vein@8?result=unavailable")
   }
   if (count) refreshCatalogue()
-  redirect("/admin?result=" + (count ? "deleted" : "unavailable"))
+  redirect("/vault8@vein@8?result=" + (count ? "deleted" : "unavailable"))
 }
 
 function isDuplicate(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
 }
 
-const filtersUrl = "/admin?view=filters&result="
+const filtersUrl = "/vault8@vein@8?view=filters&result="
 
 function refreshShopSettings() {
   updateTag(publicSettingsTag)
@@ -247,20 +247,20 @@ export async function addShopFilterOption(key: string, form: FormData) {
 
 export async function shipOrder(id: string) {
   const db = await requireAdminDatabase()
-  if (!z.uuid().safeParse(id).success) redirect("/admin?view=orders")
+  if (!z.uuid().safeParse(id).success) redirect("/vault8@vein@8?view=orders")
   const result = await db.order.updateMany({
     where: { id, status: "paid" }, data: { status: "shipped", shipped_at: new Date() },
   }).catch(() => null)
-  if (result?.count) revalidatePath("/admin")
-  redirect("/admin?view=orders&result=" + (result?.count ? "shipped" : "unavailable"))
+  if (result?.count) revalidatePath("/vault8@vein@8")
+  redirect("/vault8@vein@8?view=orders&result=" + (result?.count ? "shipped" : "unavailable"))
 }
 
 export async function readMessage(id: string) {
   const db = await requireAdminDatabase()
-  if (!z.uuid().safeParse(id).success) redirect("/admin?view=inbox")
+  if (!z.uuid().safeParse(id).success) redirect("/vault8@vein@8?view=inbox")
   const result = await db.inboxMessage.updateMany({
     where: { id, read_at: null }, data: { read_at: new Date() },
   }).catch(() => null)
-  if (result?.count) revalidatePath("/admin")
-  redirect("/admin?view=inbox&result=" + (result?.count ? "read" : "unavailable"))
+  if (result?.count) revalidatePath("/vault8@vein@8")
+  redirect("/vault8@vein@8?view=inbox&result=" + (result?.count ? "read" : "unavailable"))
 }

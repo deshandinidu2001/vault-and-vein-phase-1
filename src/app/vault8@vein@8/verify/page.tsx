@@ -9,7 +9,7 @@ const messages = {
   unavailable: "Email verification is temporarily unavailable. Try again shortly.",
 }
 
-export default async function AdminVerification({ searchParams }: PageProps<"/admin/verify">) {
+export default async function AdminVerification({ searchParams }: PageProps<"/vault8@vein@8/verify">) {
   const { email } = await pendingAdminIdentity()
   const { result } = await searchParams
   const message = typeof result === "string" && Object.hasOwn(messages, result)

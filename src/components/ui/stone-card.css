@@ -4,7 +4,9 @@
 .stone-art { position: relative; isolation: isolate; aspect-ratio: 1.2; overflow: hidden; background: radial-gradient(ellipse at 50% 40%,#eee6d3,#e4dbc8); }
 .dark-panel .stone-art { background: radial-gradient(ellipse at 55% 45%,#245242,#0b2b22 75%); }
 .stone-art img { transition: scale .4s var(--easing); }
-.stone-art img.gem-illustration { padding: 5%; }
+.photo-unavailable { display: grid; position: absolute; inset: 0; place-items: center; padding: .5rem; text-align: center; font-size: .78rem; }
+.stone-art:has(.photo-unavailable) { background: #ebe3d3; color: #515c52; }
+.dark-panel .stone-art:has(.photo-unavailable) { background: #13382d; color: #f6f1e7; }
 .stone-card .stone-art { aspect-ratio: 4 / 3; }
 .stone-card-arrow { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 100%; background: #e5eadf; }
 .stone-card:hover .stone-card-arrow, .stone-card:focus-within .stone-card-arrow { background: #0b3d2e; color: #fbf8ef; }

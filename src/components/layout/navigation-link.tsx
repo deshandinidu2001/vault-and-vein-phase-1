@@ -5,11 +5,8 @@ import { useState, type ComponentProps } from "react"
 
 function LinkFeedback() {
   const { pending } = useLinkStatus()
-  return <span role="status">
-    {pending && <>
-      <span className="sr-only">Loading page…</span>
-      <span aria-hidden="true" className="absolute end-1 top-1 z-10 size-2 rounded-full bg-[#c89e47] motion-safe:animate-pulse motion-safe:[animation-delay:150ms]" />
-    </>}
+  return <span className="sr-only" role="status" data-navigation-pending={pending ? "" : undefined}>
+    {pending && "Loading page…"}
   </span>
 }
 

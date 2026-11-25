@@ -10,7 +10,8 @@ await db.exec(await readFile(new URL("../../prisma/migrations/20261123000100_ini
 await db.exec(`
   insert into public.products
   (id,slug,name,gem_type,cut,carat,length_mm,width_mm,depth_mm,colour,clarity,treatment,origin,description,price_lkr,is_published,tint)
-  values ('fd9f8831-e604-48cc-9d2c-79860244d258','fixture-sapphire','Fixture Sapphire','sapphire','Oval',2,8,6,4,'Blue','Eye clean','Heated','Sri Lanka','Browser fixture only.',125000,true,'#253e8c');
+  values ('fd9f8831-e604-48cc-9d2c-79860244d258','fixture-sapphire','Fixture Sapphire','sapphire','Oval',2,8,6,4,'Blue','Eye clean','Heated','Sri Lanka','Browser fixture only.',125000,true,'#253e8c'),
+  ('fd9f8831-e604-48cc-9d2c-79860244d259','fixture-garnet','Fixture Garnet','garnet','Cushion',1,6,6,3,'Red','Eye clean','None','Sri Lanka','Browser fixture only.',32000,true,'#782f51');
 
   insert into public.products
   (slug,name,gem_type,cut,carat,length_mm,width_mm,depth_mm,colour,clarity,treatment,origin,description,price_lkr,is_published,is_sample,tint)

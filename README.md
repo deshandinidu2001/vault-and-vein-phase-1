@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:3000. Without a database, the store uses the 12 sample listings. Forms validate and display a preview confirmation. Online payment and admin sign-in are disabled in preview mode.
+Open http://localhost:3000. The catalogue shows published inventory from the database. Without a database, it shows an empty state. Forms validate and display a preview confirmation, and online payment and admin sign-in are disabled.
 
 ## Connect Neon and create an admin
 
@@ -29,14 +29,13 @@ Open http://localhost:3000. Without a database, the store uses the 12 sample lis
 3. Set `NEON_ADMIN_GOOGLE_EMAILS` in `.env.local` to the exact Google email address for each approved admin, separated by commas. For an existing installation, replace `NEON_ADMIN_USER_IDS` with this setting.
 4. In **Better Auth → Configure Auth**, check that Google is enabled and your app origin is trusted. Neon provides shared Google credentials for development. For production, configure a Google OAuth client and register `<NEON_AUTH_BASE_URL>/callback/google` in Google Cloud. [Neon Google OAuth setup](https://neon.com/docs/auth/guides/setup-oauth)
 5. Enable email verification codes in Neon and configure email delivery for production. The admin app uses Neon's Email OTP endpoints and requires a code on every new sign-in. [Neon Email OTP guide](https://neon.com/docs/auth/guides/plugins/email-otp)
-6. Restart the app and open `/admin/login`. Select **Continue with Google**, then **Send verification code**. The first Google sign-in creates the Neon Auth user. The dashboard requires a verified Google email on the allowlist and a valid code.
+6. Restart the app and open `/vault8@vein@8/login`. Select **Continue with Google**, then **Send verification code**. The first Google sign-in creates the Neon Auth user. The dashboard requires a verified Google email on the allowlist and a valid code.
 7. For Vercel, add `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`, and `NEON_ADMIN_GOOGLE_EMAILS` as server environment variables. Trust the deployment's origin in Neon and redeploy.
 
 ### Move an existing catalogue
 
 Use a fresh Neon branch after applying the Prisma migrations. For the final transfer, pause source writes and let pending payments settle before taking the snapshot. Obtain the legacy direct PostgreSQL connection string from the database provider and set it as `LEGACY_DATABASE_URL` in the local shell. With PostgreSQL client tools `pg_dump` and `psql` on PATH, run `npm run db:import-legacy`. It copies catalogue data, filter settings, image references, orders, payment records and inbox messages into the new database in a single restore transaction. Provision admin accounts in Neon Auth separately. Existing Supabase or password-based store admin accounts do not carry over to Managed Better Auth. Check catalogue and order counts before changing the Vercel connection. Keep the original database available until the transfer is verified.
 
-For a sample catalogue, run `npm run db:seed:samples` after applying the Prisma migrations. It inserts the 12 sample listings and skips existing slugs. Sample prices are illustrative and the listings are excluded from checkout.
 
 ## Upload product photos
 
@@ -53,7 +52,7 @@ With PayHere enabled, customers can choose **Buy now** for an available stone or
 
 ## Images and store details
 
-- Update the five home slides in `src/config/hero.ts` and the editorial slots in `src/config/images.ts`. The images and gem viewers illustrate colour and cut.
+- Update the five home slides in `src/config/hero.ts` and the editorial slots in `src/config/images.ts`. Upload actual listing photos from the admin inventory.
 - Set the store's email, hours, map, currency estimate, policies, and site copy in `src/config/site.ts`. Set the WhatsApp number with `NEXT_PUBLIC_WHATSAPP_NUMBER`.
 - Contact and enquiry messages are visible in the admin inbox.
 
@@ -66,4 +65,4 @@ node ./node_modules/@playwright/test/cli.js install chromium --only-shell
 npm test
 ```
 
-On Windows, set `NODE_USE_SYSTEM_CA=1` in the current shell if Node cannot verify the TLS certificates for browser or font downloads. Playwright checks the sample storefront on desktop and mobile Chromium. A separate local fixture exercises admin and checkout through the application using the same migrations, the Prisma PostgreSQL driver, a local Neon Auth fixture and an intercepted PayHere form submission. The database suite checks access boundaries, reservations and payment transitions. Run the hosted PayHere sandbox check with your merchant and Neon project.
+On Windows, set `NODE_USE_SYSTEM_CA=1` in the current shell if Node cannot verify the TLS certificates for browser or font downloads. Playwright checks the storefront on desktop and mobile Chromium. A separate local fixture exercises admin and checkout through the application using the same migrations, the Prisma PostgreSQL driver, a local Neon Auth fixture and an intercepted PayHere form submission. The database suite checks access boundaries, reservations and payment transitions. Run the hosted PayHere sandbox check with your merchant and Neon project.
