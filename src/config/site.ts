@@ -6,7 +6,7 @@ export const site = {
   description: "Discover fine cut and polished gemstones through a collection inspired by Sri Lankan gemstone heritage.",
   url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
   country: "Sri Lanka",
-  email: "vaultvein@gmail.com",
+  email: "vault8vein@gmail.com",
   mobile: "+94700000000",
   whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "",
   businessHours: "Every day, 8:00 AM to 5:00 PM (Sri Lanka time)",
@@ -77,7 +77,6 @@ export const policies = {
     title: "Terms",
     summary: "Review the price, availability and individual stone details before ordering.",
     sections: [
-      { heading: "Illustrative listings", body: "Listings marked as samples are for browsing. Images and 3D models illustrate the cut and colour family." },
       { heading: "Questions and purchases", body: "If checkout is available, the order status page confirms when PayHere has verified payment. Before paying, confirm delivery and return terms for your order." },
     ],
   },

@@ -72,10 +72,10 @@ export function GemGallery({ stones, categoryLabels }: { stones: Stone[]; catego
               exit={{ opacity: 0 }} transition={{ duration: reduced ? 0 : .3, delay: reduced ? 0 : Math.min(index, 5) * .06 }} className="gallery-card">
               <div className="stone-art">
                 <StoneMedia stone={item} sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 76vw"
-                  label={(item.image_url ? "Photo of " : "Illustration of ") + item.name} />
+                  label={"Photo of " + item.name} />
               </div>
               <div className="grid content-start gap-2 pt-4">
-                <p className="eyebrow">{stoneCategory(item)}{item.is_sample && " / Sample stone"}</p>
+                <p className="eyebrow">{stoneCategory(item)}</p>
                 <h3 className="text-[clamp(1.6rem,2.5vw,2.2rem)]">{item.name}</h3>
                 <p className="text-sm text-cream/80">{item.cut} <span aria-hidden="true">·</span> {item.carat} ct <span aria-hidden="true">·</span> {item.colour}</p>
                 <button className="line-link gallery-open w-fit text-sm" type="button" aria-label={"Open this stone: " + item.name} aria-haspopup="dialog" onClick={(event) => {
@@ -114,16 +114,16 @@ export function GemGallery({ stones, categoryLabels }: { stones: Stone[]; catego
           }}>
           {stone && <>
             <div className="grid gap-6 pt-4 md:grid-cols-2 md:items-center">
-              <div className="stone-art rounded-2xl"><StoneMedia stone={stone} label={(stone.image_url ? "Photo of " : "Illustration of ") + stone.name} sizes="(min-width: 768px) 350px, 80vw" /></div>
+              <div className="stone-art rounded-2xl"><StoneMedia stone={stone} label={"Photo of " + stone.name} sizes="(min-width: 768px) 350px, 80vw" /></div>
               <div className="grid gap-3" aria-live="polite">
-                <p className="eyebrow text-[#785520]">{stoneCategory(stone)}{stone.is_sample && " / Sample stone"}</p>
+                <p className="eyebrow text-[#785520]">{stoneCategory(stone)}</p>
                 <DialogTitle className="font-display text-4xl">{stone.name}</DialogTitle>
                 <DialogDescription>{stone.description}</DialogDescription>
                 <dl className="grid grid-cols-2 gap-2 text-sm">
                   <div><dt className="text-muted-foreground">Cut</dt><dd>{stone.cut}</dd></div>
                   <div><dt className="text-muted-foreground">Weight</dt><dd>{stone.carat} ct</dd></div>
                   <div><dt className="text-muted-foreground">Colour</dt><dd>{stone.colour}</dd></div>
-                  <div><dt className="text-muted-foreground">{stone.is_sample ? "Sample price" : "Price"}</dt><dd>{formatPrice(stone.price_lkr, currency)}</dd></div>
+                  <div><dt className="text-muted-foreground">Price</dt><dd>{formatPrice(stone.price_lkr, currency)}</dd></div>
                 </dl>
                 <div className="flex flex-wrap gap-2">
                   <Link href={"/shop/" + stone.slug} onClick={() => setSelected(null)} className="pill pill-primary">View details</Link>

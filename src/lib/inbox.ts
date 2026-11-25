@@ -1,6 +1,6 @@
 import "server-only"
 import { z } from "zod"
-import { backendConfigured, serviceDatabase } from "./backend"
+import { backendConfigured, database } from "./backend"
 import { permitRequest, readJson } from "./http"
 import { contactSchema, enquirySchema } from "./validators"
 
@@ -21,8 +21,9 @@ export async function saveMessage(request: Request, kind: "contact" | "enquiry")
     if (!await permitRequest(request, kind, parsed.data.email)) {
       return Response.json({ message: "Please wait before sending another message." }, { status: 429 })
     }
-    const { error } = await serviceDatabase().from("inbox").insert({ kind, email: parsed.data.email.toLowerCase(), payload: parsed.data })
-    if (error) throw error
+    await database().inboxMessage.create({
+      data: { kind, email: parsed.data.email.toLowerCase(), payload: parsed.data },
+    })
     return Response.json({ preview: false }, { status: 201 })
   } catch {
     return Response.json({ message: "We couldn’t save your message. Please try again." }, { status: 503 })

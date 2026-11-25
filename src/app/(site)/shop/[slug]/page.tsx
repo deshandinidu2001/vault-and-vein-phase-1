@@ -12,6 +12,7 @@ import { stoneCategory, type Stone } from "@/types/stone"
 import { site } from "@/config/site"
 import { checkoutConfig } from "@/lib/checkout"
 import { pageMetadata, serializeJsonLd } from "@/lib/seo"
+import { productPhotoUrl } from "@/lib/product-photo"
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -19,11 +20,13 @@ export async function generateMetadata({ params }: Props) {
   const { slug } = await params
   const stone = await getStoneBySlug(slug)
   if (!stone) return { title: "Stone not found", robots: { index: false, follow: true } }
+  if (stone.is_sample) return { title: stone.name + " · Sample", robots: { index: false, follow: true } }
   return pageMetadata(stone.name, stone.description, "/shop/" + stone.slug)
 }
 
 function ProductData({ stone }: { stone: Stone }) {
   const path = "/shop/" + stone.slug
+  const image = productPhotoUrl(stone.image_url, 1200)
   const product = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -31,14 +34,14 @@ function ProductData({ stone }: { stone: Stone }) {
     sku: stone.id,
     category: stoneCategory(stone),
     color: stone.colour,
-    description: (stone.is_sample ? "Sample listing. " : "") + stone.description,
+    description: stone.description,
     url: new URL(path, site.url).href,
-    image: new URL("/images/stones/" + stone.slug, site.url).href,
+    ...(image && { image }),
     brand: { "@type": "Brand", name: site.name },
     additionalProperty: [
       { "@type": "PropertyValue", name: "Cut", value: stone.cut },
       { "@type": "PropertyValue", name: "Carat", value: stone.carat },
-      { "@type": "PropertyValue", name: stone.is_sample ? "Illustrative price (LKR)" : "Price (LKR)", value: stone.price_lkr },
+      { "@type": "PropertyValue", name: "Price (LKR)", value: stone.price_lkr },
     ],
   }
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(product) }} />
@@ -61,26 +64,28 @@ export default async function StoneDetail({ params }: Props) {
     ["Gem type", stoneCategory(stone)], ["Cut", stone.cut], ["Weight", stone.carat + " ct"],
     ["Dimensions", [stone.length_mm, stone.width_mm, stone.depth_mm].join(" × ") + " mm"],
     ["Colour", stone.colour], ["Clarity", stone.clarity], ["Treatment", stone.treatment], ["Origin", stone.origin],
-    ["Lab report", stone.certified ? (stone.is_sample ? "Indicated in sample record" : "Available on request") : "Not listed"],
+    ["Lab report", stone.is_sample ? "Not applicable to samples" : stone.certified ? "Available on request" : "Not listed"],
   ]
 
   return <article className="wrap section page-top-compact space-y-8 md:space-y-12">
-    <ProductData stone={stone} />
+    {!stone.is_sample && <ProductData stone={stone} />}
     <Link href="/shop" className="line-link text-sm"><ArrowLeft size={18} aria-hidden="true" /> Back to the shop</Link>
     <div className="grid gap-7 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:gap-10 xl:gap-16">
       <ProductGallery stone={stone} extraPhotos={stone.gallery_urls ?? []} />
       <div className="grid min-w-0 content-start gap-6 md:pt-3">
         <div className="grid gap-4">
           <div className="flex flex-wrap items-center gap-3">
-            <p className="text-sm font-semibold text-[#785520]">{stoneCategory(stone)}{stone.is_sample && " / Sample stone"}</p>
-            <Badge variant="outline" className="capitalize">{stone.status}</Badge>
+            <p className="text-sm font-semibold text-[#785520]">{stoneCategory(stone)}</p>
+            <Badge variant="outline" className="capitalize">{stone.is_sample ? "Sample" : stone.status}</Badge>
           </div>
           <h1 className="wrap-anywhere text-[clamp(3rem,5.5vw,5.4rem)]">{stone.name}</h1>
           <p className="wrap-anywhere text-muted-foreground">{stone.cut} cut · {stone.carat} ct · {stone.colour}</p>
         </div>
         <div className="product-purchase grid gap-4">
-          <span className="text-2xl font-semibold text-emerald"><StonePrice lkr={stone.price_lkr} both /></span>
-          <p className="text-sm text-muted-foreground">{stone.is_sample && "Sample pricing and availability. "}USD is an estimate.</p>
+          {stone.is_sample ? <p className="text-sm text-muted-foreground">Sample listing for display only.</p> : <>
+            <span className="text-2xl font-semibold text-emerald"><StonePrice lkr={stone.price_lkr} both /></span>
+            <p className="text-sm text-muted-foreground">USD is an estimate.</p>
+          </>}
           <ProductActions stone={stone} paymentsEnabled={Boolean(checkoutConfig())} />
         </div>
       </div>

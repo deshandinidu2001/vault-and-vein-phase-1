@@ -9,6 +9,7 @@ import type { Stone } from "@/types/stone"
 export function ProductActions({ stone, paymentsEnabled }: { stone: Stone; paymentsEnabled: boolean }) {
   const alreadyInCart = useCart((state) => state.items.some(({ id }) => id === stone.id))
   const add = useCart((state) => state.add)
+  if (stone.is_sample) return <div><EnquireButton stones={[stone]}>Ask about this stone</EnquireButton></div>
   const canBuy = paymentsEnabled && stone.status === "available" && stone.is_sample === false
 
   return <div className="grid gap-5">

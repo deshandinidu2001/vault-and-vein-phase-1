@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Product {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug             String      @unique
+  name             String
+  gem_type         String
+  category         GemCategory @relation(fields: [gem_type], references: [slug], onDelete: NoAction, onUpdate: NoAction)
+  cut              String
+  carat            Decimal     @db.Decimal(8, 2)
+  length_mm        Decimal     @db.Decimal(8, 2)
+  width_mm         Decimal     @db.Decimal(8, 2)
+  depth_mm         Decimal     @db.Decimal(8, 2)
+  colour           String
+  clarity          String
+  treatment        String
+  origin           String
+  description      String
+  price_lkr        Int
+  status           String      @default("available")
+  reserved_until   DateTime?   @db.Timestamptz(6)
+  is_featured      Boolean     @default(false)
+  is_published     Boolean     @default(false)
+  is_sample        Boolean     @default(false)
+  model_key        String?     @default(dbgenerated())
+  tint             String
+  certified        Boolean     @default(false)
+  collections      String[]    @default([])
+  archived_at      DateTime?   @db.Timestamptz(6)
+  image_url        String?
+  gallery_urls     String[]    @default([])
+  gallery_revision String      @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_items      OrderItem[]
+  stock_hold       StockHold?
+
+  @@index([is_published, is_featured(sort: Desc), slug], map: "products_public")
+  @@index([gem_type], map: "products_gem_type")
+  @@map("products")
+}
+
+model GemCategory {
+  slug       String    @id
+  name       String
+  is_builtin Boolean   @default(false)
+  is_visible Boolean   @default(true)
+  products   Product[]
+
+  @@map("gem_categories")
+}
+
+model ShopFilterSetting {
+  filter_key String
+  value      String  @default("")
+  label      String  @default("")
+  is_visible Boolean @default(true)
+
+  @@id([filter_key, value])
+  @@map("shop_filter_settings")
+}
+
+model Order {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  public_token   String         @unique @db.Uuid
+  customer       Json
+  status         String         @default("pending")
+  total_lkr      Int
+  shipping_lkr   Int
+  created_at     DateTime       @default(now()) @db.Timestamptz(6)
+  expires_at     DateTime       @default(dbgenerated("(now() + '00:20:00'::interval)")) @db.Timestamptz(6)
+  paid_at        DateTime?      @db.Timestamptz(6)
+  shipped_at     DateTime?      @db.Timestamptz(6)
+  order_items    OrderItem[]
+  stock_holds    StockHold[]
+  payment_events PaymentEvent[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  order_id   String  @db.Uuid
+  product_id String  @db.Uuid
+  name       String
+  price_lkr  Int
+  order      Order   @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  product    Product @relation(fields: [product_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([order_id, product_id])
+  @@map("order_items")
+}
+
+model StockHold {
+  product_id String  @id @db.Uuid
+  order_id   String  @db.Uuid
+  order      Order   @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  product    Product @relation(fields: [product_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([order_id], map: "stock_holds_order")
+  @@map("stock_holds")
+}
+
+model PaymentEvent {
+  payment_id  String
+  status_code String
+  order_id    String   @db.Uuid
+  received_at DateTime @default(now()) @db.Timestamptz(6)
+  order       Order    @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([payment_id, status_code])
+  @@map("payment_events")
+}
+
+model InboxMessage {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind       String
+  email      String
+  payload    Json
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  read_at    DateTime? @db.Timestamptz(6)
+
+  @@map("inbox")
+}
+
+model RateLimit {
+  key          String   @id
+  window_start DateTime @db.Timestamptz(6)
+  hits         Int
+
+  @@index([window_start], map: "rate_limits_window_start")
+  @@map("rate_limits")
+}
+
+model StoreAdminPin {
+  email     String @id
+  pin_hash  String
+  revision  String @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  @@map("store_admin_pin")
+}
+
+model AdminUser {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String         @unique
+  password_hash String
+  sessions      AdminSession[]
+
+  @@map("admin_users")
+}
+
+model AdminSession {
+  token_hash String    @id
+  admin_id   String    @db.Uuid
+  expires_at DateTime  @db.Timestamptz(6)
+  admin      AdminUser @relation(fields: [admin_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([admin_id])
+  @@map("admin_sessions")
+}

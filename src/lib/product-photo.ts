@@ -1,4 +1,7 @@
 export const productPhotoIdPrefix = "vault-and-vein/products/"
+export const maxProductPhotos = 8
+export const maxProductPhotoBytes = 3 * 1024 * 1024
+export const productPhotoTypes = ["image/jpeg", "image/png", "image/webp"]
 const photoPath = /^(https:\/\/res\.cloudinary\.com\/[\w-]+\/image\/upload\/)(v\d+\/(vault-and-vein\/products\/[a-f0-9-]{36})\.(?:jpg|jpeg|png|webp))$/
 
 export function parseProductPhoto(url: string | null | undefined) {

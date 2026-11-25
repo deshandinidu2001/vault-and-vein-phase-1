@@ -10,7 +10,7 @@ export function ProductGallery({ stone, extraPhotos }: { stone: Stone; extraPhot
   const photo = selected && photos.includes(selected) ? selected : photos[0]
   const index = photo ? photos.indexOf(photo) : -1
   const label = index === 0 ? "Photo of " + stone.name
-    : index > 0 ? "Photo " + (index + 1) + " of " + stone.name : "Illustration of " + stone.name
+    : index > 0 ? "Photo " + (index + 1) + " of " + stone.name : stone.name
 
   return <figure className="grid min-w-0 gap-4">
     <div className="stone-art product-feature-image">
@@ -30,6 +30,5 @@ export function ProductGallery({ stone, extraPhotos }: { stone: Stone; extraPhot
         </li>)}
       </ul>
     </figcaption>}
-    {!photo && <figcaption className="text-sm text-muted-foreground">Gemstone illustration</figcaption>}
   </figure>
 }

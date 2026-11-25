@@ -3,25 +3,42 @@ import { expect, test, type Page } from "@playwright/test"
 
 const canonicalOrigin = "https://vault-fixture.example"
 const listing = "/shop/fixture-sapphire"
-const adminPassword = "fixture-password"
 const samplePhoto = {
   name: "test-stone.png", mimeType: "image/png",
   buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+yA5sAAAAASUVORK5CYII=", "base64"),
 }
 
-async function login(page: Page, role: "visitor" | "admin", password = adminPassword) {
-  await page.goto("/admin/login")
-  await page.getByLabel("Email", { exact: true }).fill("vault-fixture-" + role + "@example.test")
-  await page.getByLabel("Password", { exact: true }).fill(password)
-  await page.getByRole("button", { name: "Sign in" }).click()
+async function continueWithGoogle(page: Page, role: "visitor" | "admin") {
+  await page.route("**/auth/mock-google?*", (route) => {
+    const url = new URL(route.request().url())
+    url.searchParams.set("role", role)
+    return route.continue({ url: url.href })
+  }, { times: 1 })
+  await page.goto("/vault8@vein@8/login")
+  await page.getByRole("button", { name: "Continue with Google" }).click()
+}
+
+async function submitCode(page: Page, code: string, pin: string) {
+  await page.getByLabel("Verification code").fill(code)
+  await page.getByLabel("New PIN", { exact: true }).fill(pin)
+  await page.getByLabel("Confirm new PIN", { exact: true }).fill(pin)
+  await page.getByRole("button", { name: "Save PIN and sign in" }).click()
 }
 
 test("configured checkout, webhook verification, durable messages and admin fulfillment", async ({ page, request, baseURL }) => {
   await page.route("https://res.cloudinary.com/vault-fixture/**", (route) => route.fulfill({ contentType: "image/png", body: samplePhoto.buffer }))
   await page.goto("/shop/fixture-sample")
-  await page.getByRole("button", { name: "Add to Cart" }).click()
+  await expect(page.getByText("Sample listing for display only.")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Add to Cart" })).toHaveCount(0)
   await expect(page.getByRole("button", { name: "Buy now" })).toHaveCount(0)
+  expect((await request.get("/images/stones/fixture-sample")).status()).toBe(404)
+  expect((await request.get("/admin")).status()).toBe(404)
+  await page.goto("/shop/fixture-garnet")
+  await page.getByRole("button", { name: "Add to Cart" }).click()
   await page.goto(listing)
+  await expect(page.locator(".product-feature-image").getByText("Photo unavailable")).toBeVisible()
+  await expect(page.getByRole("region", { name: "Description" })).toBeVisible()
+  await expect(page.getByRole("region", { name: "Specifications" }).getByText("Dimensions")).toBeVisible()
   await page.getByRole("button", { name: "Add to Cart" }).click()
   await page.getByRole("button", { name: "Open cart, 2 stones" }).click()
   await expect(page.getByRole("link", { name: "Go to checkout" })).toBeVisible()
@@ -88,6 +105,15 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page.getByRole("button", { name: "Open cart, 1 stones" })).toBeVisible()
   await page.goto(base + listing)
   await expect(page.getByRole("button", { name: "Unavailable" })).toBeDisabled()
+  const sold = await request.post("/api/checkout", {
+    headers: { origin: canonicalOrigin },
+    data: {
+      ids: ["fd9f8831-e604-48cc-9d2c-79860244d258"], requestId: randomUUID(),
+      first_name: "Second", last_name: "Buyer", email: "second@example.test",
+      phone: "+94 77 123 4567", address: "15 Example Road", city: "Colombo",
+    },
+  })
+  expect(sold.status()).toBe(409)
 
   const contact = await request.post("/api/contact", { data: {
     name: "Test Visitor", email: "contact@example.test", subject: "A configured message", message: "Can you tell me more about this stone?",
@@ -99,28 +125,50 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   } })
   expect(enquiry.status()).toBe(201)
 
-  await login(page, "visitor")
-  await expect(page.getByRole("main").getByRole("alert")).toHaveText("These credentials did not grant admin access.")
-  await page.goto("/admin/products/new")
-  await expect(page).toHaveURL(/\/admin\/login$/)
-  await expect(page.getByLabel("Upload photo")).toHaveCount(0)
-  await page.goto("/admin?view=filters")
-  await expect(page).toHaveURL(/\/admin\/login$/)
-  await page.goto("/admin/verify")
-  await expect(page).toHaveURL(/\/admin\/login$/)
-  await login(page, "admin")
-  await expect(page).toHaveURL(/\/admin$/)
-  await page.goto("/admin/verify")
-  await expect(page).toHaveURL(/\/admin$/)
+  await continueWithGoogle(page, "visitor")
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText("This Google account is not approved for store admin access.")
+  expect((await page.context().cookies()).some(cookie => cookie.name === "__Host-vault-admin-pin")).toBe(false)
+  await page.goto("/vault8@vein@8/products/new")
+  await expect(page).toHaveURL(/\/vault8@vein@8\/login/)
+  await expect(page.getByLabel("Choose photos")).toHaveCount(0)
+  await page.goto("/vault8@vein@8?view=filters")
+  await expect(page).toHaveURL(/\/vault8@vein@8\/login/)
+  await page.goto("/vault8@vein@8/verify")
+  await expect(page).toHaveURL(/\/vault8@vein@8\/login/)
+  await continueWithGoogle(page, "admin")
+  await expect(page).toHaveURL(/\/vault8@vein@8\/verify$/)
+  await page.goto("/vault8@vein@8/products/new")
+  await expect(page).toHaveURL(/\/vault8@vein@8\/verify$/, { timeout: 15000 })
+  await page.getByRole("button", { name: "Send verification code" }).click()
+  await expect(page.getByRole("status")).toContainText("Check your email")
+  await submitCode(page, "000000", "86425139")
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("invalid or expired")
+  await submitCode(page, "123456", "86425139")
+  await expect(page).toHaveURL(/\/vault8@vein@8$/)
+  await page.goto("/vault8@vein@8/verify")
+  await expect(page).toHaveURL(/\/vault8@vein@8$/)
   await expect(page.getByRole("heading", { name: "Store admin" })).toBeVisible()
   await expect(page.locator(".site-footer")).toHaveCount(0)
-  expect((await page.context().cookies()).some((cookie) => cookie.name.includes("auth-token") && cookie.httpOnly && cookie.sameSite === "Lax")).toBe(true)
-  const authenticated = await page.request.get("/admin")
+  expect((await page.context().cookies()).some((cookie) => cookie.name === "__Host-vault-admin-pin" && cookie.httpOnly && cookie.sameSite === "Strict" && cookie.secure)).toBe(true)
+  const authenticated = await page.request.get("/vault8@vein@8")
   expect(authenticated.headers()["cache-control"]).toContain("no-store")
   expect(authenticated.headers()["content-security-policy"]).toContain("frame-ancestors 'none'")
   expect(authenticated.headers()["content-security-policy"]).toContain("'nonce-")
-  const secondPolicy = (await page.request.get("/admin")).headers()["content-security-policy"]
+  const secondPolicy = (await page.request.get("/vault8@vein@8")).headers()["content-security-policy"]
   expect(secondPolicy).not.toBe(authenticated.headers()["content-security-policy"])
+  const crossOriginLock = await page.request.post("/vault8@vein@8/lock", {
+    headers: { Origin: "https://unrelated.example" },
+  })
+  expect(crossOriginLock.status()).toBe(403)
+  await page.getByRole("button", { name: "View storefront" }).click()
+  await expect(page).toHaveURL(url => url.pathname === "/")
+  expect((await page.context().cookies()).some(cookie => cookie.name === "__Host-vault-admin-pin")).toBe(false)
+  await page.goBack()
+  await expect(page.getByRole("heading", { name: "Enter admin PIN" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Store admin" })).toHaveCount(0)
+  await page.getByLabel("Admin PIN").fill("86425139")
+  await page.getByRole("button", { name: "Sign in to admin" }).click()
+  await expect(page.getByRole("heading", { name: "Store admin" })).toBeVisible()
   await page.getByRole("link", { name: "Orders", exact: true }).click()
   await expect(page.getByRole("region", { name: "Online checkout" })).toContainText("PayHere is configured in sandbox mode.")
   await expect(page.getByText("checkout@example.test")).toBeVisible()
@@ -143,7 +191,7 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await page.goto("/shop")
   await page.getByRole("button", { name: "Filters", exact: true }).click()
   await expect(page.getByLabel("Gem type", { exact: true }).locator('option[value="tourmaline"]')).toHaveText("Tourmaline")
-  await page.goto("/admin?view=filters")
+  await page.goto("/vault8@vein@8?view=filters")
   await page.getByRole("button", { name: "Hide Price range (LKR) filter", exact: true }).click()
   await expect(page.getByRole("button", { name: "Show Price range (LKR) filter", exact: true })).toBeVisible()
   for (const [group, label] of [["Cut", "Marquise"], ["Collection", "Estate stones"], ["Colour", "Rose"], ["Origin", "Madagascar"]]) {
@@ -166,7 +214,11 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page.getByRole("combobox", { name: "Gem type", exact: true }).locator('option[value="tourmaline"]')).toHaveText("Tourmaline")
   await page.getByRole("combobox", { name: "Cut", exact: true }).selectOption("Marquise")
   await page.getByRole("checkbox", { name: "Estate stones" }).check()
-  await page.getByLabel("Upload photo").setInputFiles(samplePhoto)
+  await page.getByLabel("Choose photos").setInputFiles([samplePhoto, { ...samplePhoto, name: "other-angle.png" }])
+  const previews = page.getByRole("list", { name: "Selected photo previews" })
+  await expect(previews.getByRole("img")).toHaveCount(2)
+  await expect.poll(() => previews.getByRole("img", { name: "Preview of other-angle.png" })
+    .evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0)
   await page.getByRole("button", { name: "Save listing" }).click()
   await expect(page.getByText("Listing saved.")).toBeVisible()
   const newListing = page.getByRole("listitem").filter({ hasText: "Test Spinel" })
@@ -177,15 +229,17 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   const unpublished = await request.get("/shop/test-spinel")
   expect(unpublished.status()).toBe(404)
   await newListing.getByRole("button", { name: "Publish", exact: true }).click()
-  await expect(newListing.getByRole("link", { name: "View listing" })).toBeVisible()
+  await expect(newListing.getByRole("button", { name: "View listing" })).toBeVisible()
   expect((await request.get("/shop/test-spinel")).status()).toBe(200)
   await newListing.getByRole("link", { name: "Edit listing" }).click()
   const galleryEditor = page.getByRole("region", { name: "Product photos" })
   const firstCover = await galleryEditor.getByRole("img", { name: "Cover photo", exact: true }).getAttribute("src")
-  await galleryEditor.getByLabel("Add photo", { exact: true }).setInputFiles(samplePhoto)
-  await galleryEditor.getByRole("button", { name: "Upload photo", exact: true }).click()
-  await expect(page.getByRole("status")).toHaveText("Product photos updated.")
   const additionalPhoto = await galleryEditor.getByRole("img", { name: "Product photo 2", exact: true }).getAttribute("src")
+  await galleryEditor.getByLabel("Choose photos").setInputFiles(samplePhoto)
+  await expect(galleryEditor.getByRole("img", { name: "Preview of test-stone.png" })).toBeVisible()
+  await galleryEditor.getByRole("button", { name: "Upload photos", exact: true }).click()
+  await expect(page.getByRole("status")).toHaveText("Product photos updated.")
+  const thirdPhoto = await galleryEditor.getByRole("img", { name: "Product photo 3", exact: true }).getAttribute("src")
   expect(additionalPhoto).not.toBe(firstCover)
   await galleryEditor.getByRole("button", { name: "Set photo 2 as cover" }).click()
   await expect(galleryEditor.getByRole("img", { name: "Cover photo", exact: true })).toHaveAttribute("src", additionalPhoto!)
@@ -212,7 +266,7 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(shopPhoto).toHaveAttribute("src", new RegExp(coverFilename + "$"))
   await expect(shopPhoto).toHaveCSS("padding", "0px")
 
-  await page.goto("/admin?view=filters")
+  await page.goto("/vault8@vein@8?view=filters")
   await gemTypeOptions.getByText("Manage options", { exact: false }).click()
   await gemTypeOptions.getByRole("button", { name: "Hide Gem type option Spinel" }).click()
   await expect(page.getByRole("status")).toHaveText("Gem type visibility updated.")
@@ -221,7 +275,7 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page.getByLabel("Gem type", { exact: true }).locator('option[value="spinel"]')).toHaveCount(0)
   await expect(page.locator("#results").getByText("Test Spinel", { exact: true })).toHaveCount(0)
   expect((await request.get("/shop/test-spinel")).status()).toBe(404)
-  await page.goto("/admin")
+  await page.goto("/vault8@vein@8")
   await expect(newListing.getByRole("link", { name: "Manage gem type" })).toBeVisible()
   await newListing.getByRole("link", { name: "Manage gem type" }).click()
   const sitemap = await request.get("/sitemap.xml")
@@ -231,16 +285,18 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await gemTypeOptions.getByRole("button", { name: "Show Gem type option Spinel" }).click()
   await expect(page.getByRole("status")).toHaveText("Gem type visibility updated.")
   expect((await request.get("/shop/test-spinel")).status()).toBe(200)
-  await page.goto("/admin?status=available")
+  await page.goto("/vault8@vein@8?status=available")
   await newListing.getByRole("link", { name: "Edit listing" }).click()
   await galleryEditor.getByRole("button", { name: "Remove cover photo", exact: true }).click()
   await expect(galleryEditor.getByRole("img", { name: "Cover photo", exact: true })).toHaveAttribute("src", firstCover!)
+  await galleryEditor.getByRole("button", { name: "Remove cover photo", exact: true }).click()
+  await expect(galleryEditor.getByRole("img", { name: "Cover photo", exact: true })).toHaveAttribute("src", thirdPhoto!)
   await galleryEditor.getByRole("button", { name: "Remove cover photo", exact: true }).click()
   await expect(galleryEditor.getByRole("img", { name: "Cover photo", exact: true })).toHaveCount(0)
   await page.getByLabel("Price (LKR)", { exact: true }).fill("95000")
   await page.getByRole("button", { name: "Save listing" }).click()
   await expect(newListing.getByText(/95,000/)).toBeVisible()
-  await expect(newListing.locator("img")).not.toHaveAttribute("src", /res\.cloudinary\.com/)
+  await expect(newListing.locator("img")).toHaveCount(0)
   await newListing.getByRole("button", { name: "Unpublish" }).click()
   await expect(newListing.getByText(/Draft/)).toBeVisible()
   expect((await request.get("/shop/test-spinel")).status()).toBe(404)
@@ -248,23 +304,57 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await newListing.getByRole("button", { name: "Confirm delete" }).click()
   await expect(page.getByText("Listing removed from the shop and inventory.")).toBeVisible()
   await expect(newListing).toHaveCount(0)
-  await page.getByRole("button", { name: "Sign out" }).click()
-  await expect(page).toHaveURL(/\/admin\/login$/)
-  await page.goto("/admin?view=orders")
-  await expect(page).toHaveURL(/\/admin\/login$/)
-  await login(page, "admin")
-  await expect(page).toHaveURL(/\/admin$/)
-  await page.getByRole("link", { name: "vault-fixture-admin@example.test" }).click()
-  for (const current of ["incorrect-password", adminPassword]) {
-    await page.getByLabel("Current password").fill(current)
-    await page.getByLabel("New password", { exact: true }).fill("changed-fixture-passphrase")
-    await page.getByLabel("Confirm new password").fill("changed-fixture-passphrase")
-    await page.getByRole("button", { name: "Save password" }).click()
-    if (current !== adminPassword) await expect(page.getByRole("main").getByRole("alert")).toContainText("could not be verified")
+  const priorCookies = (await page.context().cookies()).filter(cookie =>
+    ["__Secure-neon-auth.session_token", "__Host-vault-admin-pin", "__Host-vault-admin-google"].includes(cookie.name))
+  expect(priorCookies).toHaveLength(3)
+  await page.getByRole("link", { name: "vault8vein@gmail.com" }).click()
+  await expect(page.getByRole("heading", { name: "Account security" })).toBeVisible()
+  await page.getByRole("link", { name: "Change PIN" }).click()
+  await page.getByRole("button", { name: "Send verification code" }).click()
+  await expect(page.getByRole("status")).toContainText("Check your email")
+  await submitCode(page, "123456", "95738401")
+  await expect(page).toHaveURL(/\/vault8@vein@8$/)
+  const staleBrowser = await page.context().browser()!.newContext({ baseURL })
+  try {
+    await staleBrowser.addCookies(priorCookies)
+    const stalePage = await staleBrowser.newPage()
+    await stalePage.goto("/vault8@vein@8")
+    await expect(stalePage).toHaveURL(/\/vault8@vein@8\/login$/)
+    await expect(stalePage.getByRole("heading", { name: "Store admin" })).toHaveCount(0)
+  } finally {
+    await staleBrowser.close()
   }
-  await expect(page.getByRole("status")).toContainText("Password changed")
-  await login(page, "admin")
-  await expect(page.getByRole("main").getByRole("alert")).toContainText("did not grant admin access")
-  await login(page, "admin", "changed-fixture-passphrase")
+  await page.getByRole("button", { name: "Sign out" }).click()
+  await page.goto("/vault8@vein@8?view=orders")
+  await expect(page).toHaveURL(/\/vault8@vein@8\/login$/)
+  await continueWithGoogle(page, "admin")
+  await expect(page.getByRole("heading", { name: "Enter admin PIN" })).toBeVisible()
+  await page.getByLabel("Admin PIN").fill("86425139")
+  await page.getByRole("button", { name: "Sign in to admin" }).click()
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("PIN is incorrect")
+  await page.getByLabel("Admin PIN").fill("95738401")
+  await page.getByRole("button", { name: "Sign in to admin" }).click()
   await expect(page.getByRole("heading", { name: "Store admin" })).toBeVisible()
+  await page.goto("/vault8@vein@8/login")
+  await expect(page).toHaveURL(/\/vault8@vein@8$/)
+})
+
+test("a slow product navigation shows loading feedback", async ({ page }) => {
+  await page.goto("/shop")
+  const card = page.getByRole("link").filter({ has: page.getByRole("heading", { name: "Fixture Sapphire" }) })
+  await expect(card).toBeVisible()
+  let release: () => void = () => {}
+  const held = new Promise<void>(resolve => { release = resolve })
+  await page.route(url => url.pathname === listing, async route => {
+    await held
+    await route.continue()
+  })
+  const click = card.click()
+  try {
+    await expect(card.getByRole("status")).toHaveText("Loading page…")
+  } finally {
+    release()
+  }
+  await click
+  await expect(page.getByRole("heading", { name: "Fixture Sapphire", level: 1 })).toBeVisible()
 })

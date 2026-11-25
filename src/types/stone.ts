@@ -1,5 +1,3 @@
-import type { GemCut } from "@/components/three/gem-shape"
-
 export type GemType = string
 export type GemCategory = { slug: string; name: string; is_visible: boolean }
 export type StoneStatus = "available" | "reserved" | "sold"
@@ -25,8 +23,6 @@ export type Stone = {
   status: StoneStatus
   is_featured: boolean
   is_sample?: boolean
-  model_key: GemCut
-  tint: string
   certified: boolean
   collections: string[]
 }
