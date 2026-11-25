@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "main": ".open-next/worker.js",
-  "name": "vault-and-vein",
+  "name": "vault-and-vein-phase-1",
   "compatibility_date": "2026-11-23",
   "compatibility_flags": [
     "global_fetch_strictly_public"
@@ -13,7 +13,7 @@
   "services": [
     {
       "binding": "WORKER_SELF_REFERENCE",
-      "service": "vault-and-vein"
+      "service": "vault-and-vein-phase-1"
     }
   ],
   "images": {
