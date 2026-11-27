@@ -1,6 +1,8 @@
-import type { NextRequest } from "next/server"
-import { finishAdminGoogleSignIn } from "@/lib/admin-auth"
+import { NextResponse } from "next/server"
 
-export async function GET(request: NextRequest) {
-  return finishAdminGoogleSignIn(request)
+export function GET() {
+  return new NextResponse(null, {
+    status: 303,
+    headers: { Location: "/vault8@vein@8/login", "Cache-Control": "private, no-store" },
+  })
 }

@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
-import { requireAdminGoogleIdentity, sendAdminVerification, unlockAdminSession, verifyAdminCode } from "@/lib/admin-auth"
+import { requireAdminPasswordIdentity, sendAdminVerification, unlockAdminSession, verifyAdminCode } from "@/lib/admin-auth"
 import { adminPinPattern, matchAdminPin, saveAdminPin, storeAdminEmail } from "@/lib/admin-pin"
 import { permitRequest } from "@/lib/http"
 
@@ -17,7 +17,7 @@ async function verificationRequest(scope: string, returnTo: string) {
 }
 
 export async function enterPin(form: FormData) {
-  const session = await requireAdminGoogleIdentity()
+  const session = await requireAdminPasswordIdentity()
   if (session.unlocked) redirect(admin)
   if (!session.revision) redirect(admin + "/verify?mode=reset")
   const pin = form.get("pin")
@@ -30,14 +30,14 @@ export async function enterPin(form: FormData) {
 }
 
 export async function sendVerificationCode() {
-  const { email } = await requireAdminGoogleIdentity()
+  const { email } = await requireAdminPasswordIdentity()
   await verificationRequest("admin-otp-send", resetPage)
   const result = await sendAdminVerification(email).catch(() => "unavailable")
   redirect(resetPage + result)
 }
 
 export async function setPinWithCode(form: FormData) {
-  const session = await requireAdminGoogleIdentity()
+  const session = await requireAdminPasswordIdentity()
   const pin = form.get("pin")
   const code = form.get("code")
   if (typeof pin !== "string" || !adminPinPattern.test(pin) || pin !== form.get("confirm")) {

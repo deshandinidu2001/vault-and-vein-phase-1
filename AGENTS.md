@@ -27,7 +27,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Security-sensitive changes
 
-- Guard each privileged read and write on the server. Preserve the verified Google account check, current Neon session check and PIN proof in admin access. Treat the admin URL as a route identifier.
+- Guard each privileged read and write on the server. Preserve the verified store email and password check, current Neon session check and PIN proof in admin access. Treat the admin URL as a route identifier.
 - Keep price, availability, reservation and payment decisions on the server and database. Use verified PayHere notifications to change payment status. Treat return and cancel links as navigation.
 - Keep Cloudinary upload credentials server-side. Preserve upload validation, gallery limits and the separation between public image delivery and privileged listing edits.
 - Update the [trust boundary diagram](docs/security/trust-boundaries.md) and [STRIDE diagram](docs/security/stride.md) when changing data flows, privileges or external integrations.

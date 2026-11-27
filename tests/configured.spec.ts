@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto"
 import { expect, test, type Page } from "@playwright/test"
+import { fixturePassword, updatedFixturePassword } from "./support/neon-auth-fixture.mjs"
 
 const canonicalOrigin = "https://vault-fixture.example"
 const listing = "/shop/fixture-sapphire"
@@ -8,14 +9,11 @@ const samplePhoto = {
   buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+yA5sAAAAASUVORK5CYII=", "base64"),
 }
 
-async function continueWithGoogle(page: Page, role: "visitor" | "admin") {
-  await page.route("**/auth/mock-google?*", (route) => {
-    const url = new URL(route.request().url())
-    url.searchParams.set("role", role)
-    return route.continue({ url: url.href })
-  }, { times: 1 })
+async function signInWithPassword(page: Page, email = "vault8vein@gmail.com", password = fixturePassword) {
   await page.goto("/vault8@vein@8/login")
-  await page.getByRole("button", { name: "Continue with Google" }).click()
+  await page.getByLabel("Email", { exact: true }).fill(email)
+  await page.getByLabel("Password", { exact: true }).fill(password)
+  await page.getByRole("button", { name: "Sign in", exact: true }).click()
 }
 
 async function submitCode(page: Page, code: string, pin: string) {
@@ -125,8 +123,8 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   } })
   expect(enquiry.status()).toBe(201)
 
-  await continueWithGoogle(page, "visitor")
-  await expect(page.getByRole("main").getByRole("alert")).toHaveText("This Google account is not approved for store admin access.")
+  await signInWithPassword(page, "visitor@example.test")
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText("The email or password is incorrect, or the account has not been verified.")
   expect((await page.context().cookies()).some(cookie => cookie.name === "__Host-vault-admin-pin")).toBe(false)
   await page.goto("/vault8@vein@8/products/new")
   await expect(page).toHaveURL(/\/vault8@vein@8\/login/)
@@ -135,7 +133,7 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page).toHaveURL(/\/vault8@vein@8\/login/)
   await page.goto("/vault8@vein@8/verify")
   await expect(page).toHaveURL(/\/vault8@vein@8\/login/)
-  await continueWithGoogle(page, "admin")
+  await signInWithPassword(page)
   await expect(page).toHaveURL(/\/vault8@vein@8\/verify$/)
   await page.goto("/vault8@vein@8/products/new")
   await expect(page).toHaveURL(/\/vault8@vein@8\/verify$/, { timeout: 15000 })
@@ -312,7 +310,7 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page.getByText("Listing removed from the shop and inventory.")).toBeVisible()
   await expect(newListing).toHaveCount(0)
   const priorCookies = (await page.context().cookies()).filter(cookie =>
-    ["__Secure-neon-auth.session_token", "__Host-vault-admin-pin", "__Host-vault-admin-google"].includes(cookie.name))
+    ["__Secure-neon-auth.session_token", "__Host-vault-admin-pin", "__Host-vault-admin-password"].includes(cookie.name))
   expect(priorCookies).toHaveLength(3)
   await page.getByRole("link", { name: "vault8vein@gmail.com" }).click()
   await expect(page.getByRole("heading", { name: "Account security" })).toBeVisible()
@@ -334,7 +332,7 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await page.getByRole("button", { name: "Sign out" }).click()
   await page.goto("/vault8@vein@8?view=orders")
   await expect(page).toHaveURL(/\/vault8@vein@8\/login$/)
-  await continueWithGoogle(page, "admin")
+  await signInWithPassword(page)
   await expect(page.getByRole("heading", { name: "Enter admin PIN" })).toBeVisible()
   await page.getByLabel("Admin PIN").fill("86425139")
   await page.getByRole("button", { name: "Sign in to admin" }).click()
@@ -344,6 +342,29 @@ test("configured checkout, webhook verification, durable messages and admin fulf
   await expect(page.getByRole("heading", { name: "Store admin" })).toBeVisible()
   await page.goto("/vault8@vein@8/login")
   await expect(page).toHaveURL(/\/vault8@vein@8$/)
+
+  await page.goto("/vault8@vein@8/account")
+  await page.getByLabel("Current password").fill(fixturePassword)
+  await page.getByLabel("New password", { exact: true }).fill(updatedFixturePassword)
+  await page.getByLabel("Confirm new password").fill(updatedFixturePassword)
+  await page.getByRole("button", { name: "Save new password" }).click()
+  await expect(page.getByRole("status")).toContainText("Password updated")
+  await signInWithPassword(page)
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("incorrect")
+  await signInWithPassword(page, "vault8vein@gmail.com", updatedFixturePassword)
+  await expect(page.getByRole("heading", { name: "Enter admin PIN" })).toBeVisible()
+  await page.getByRole("button", { name: "Sign out" }).click()
+
+  await page.getByRole("link", { name: "Set or reset password" }).click()
+  await page.getByRole("button", { name: "Send password reset code" }).click()
+  await expect(page.getByRole("status")).toContainText("check your email")
+  await page.getByLabel("Verification code").fill("123456")
+  await page.getByLabel("New password", { exact: true }).fill(fixturePassword)
+  await page.getByLabel("Confirm new password").fill(fixturePassword)
+  await page.getByRole("button", { name: "Save password" }).click()
+  await expect(page.getByRole("status")).toContainText("Password updated")
+  await signInWithPassword(page)
+  await expect(page.getByRole("heading", { name: "Enter admin PIN" })).toBeVisible()
 })
 
 test("a slow product navigation shows loading feedback", async ({ page }) => {
