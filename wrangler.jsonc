@@ -1,6 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "main": ".open-next/worker.js",
+  "build": {
+    "command": "node scripts/prepare-worker-env.mjs"
+  },
   "name": "vault-and-vein-phase-1",
   "compatibility_date": "2026-11-23",
   "compatibility_flags": [

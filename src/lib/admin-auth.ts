@@ -1,5 +1,5 @@
 import "server-only"
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto"
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto"
 import { createNeonAuth } from "@neon/auth/next/server"
 import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
@@ -35,6 +35,10 @@ function auth() {
     baseUrl: authUrl.href.replace(/\/$/, ""),
     cookies: { secret: cookieSecret, sameSite: "lax" },
   })
+}
+
+function digest(value: string) {
+  return createHash("sha256").update(value).digest("hex")
 }
 
 function signProof(name: string, token: string, expires: number) {
@@ -107,7 +111,11 @@ const adminSession = cache(async () => {
   const { id, email, emailVerified } = data.user
   const approved = emailVerified === true && email.toLowerCase() === storeAdminEmail
   const revision = approved ? await adminPinRevision() : null
-  const unlocked = revision !== null && validProof(unlockedCookie + ":" + revision, proof, token)
+  const signed = proof?.split("~")[0]
+  const unlocked = Boolean(revision && proof && validProof(unlockedCookie + ":" + revision, signed, token) &&
+    await database().adminUnlock.count({ where: {
+      session_hash: digest(token), proof_hash: digest(proof), expires_at: { gt: new Date() },
+    } }))
   if (proof ? !unlocked : !googleVerified) return null
   return { id, email, approved, unlocked, revision }
 })
@@ -171,7 +179,15 @@ export async function unlockAdminSession(revision: string) {
   const store = await cookies()
   const token = store.get(sessionCookie)?.value
   if (!token) throw new Error("Neon session is missing")
-  store.set(unlockedCookie, issueProof(unlockedCookie + ":" + revision, token, adminLifetime), {
+  const proof = issueProof(unlockedCookie + ":" + revision, token, adminLifetime) + "~" + randomBytes(24).toString("base64url")
+  const data = { proof_hash: digest(proof), expires_at: new Date(Date.now() + adminLifetime * 1000) }
+  const session_hash = digest(token)
+  const db = database()
+  await db.$transaction([
+    db.adminUnlock.deleteMany({ where: { expires_at: { lte: new Date() } } }),
+    db.adminUnlock.upsert({ where: { session_hash }, update: data, create: { session_hash, ...data } }),
+  ])
+  store.set(unlockedCookie, proof, {
     ...cookieOptions, sameSite: "strict", maxAge: adminLifetime,
   })
 }
@@ -186,12 +202,15 @@ export async function lockAdminSession() {
       store.set(googleCookie, issueProof(googleCookie, token, adminLifetime), { ...cookieOptions, maxAge: adminLifetime })
     }
   }
+  if (token) await database().adminUnlock.deleteMany({ where: { session_hash: digest(token) } })
   store.set(unlockedCookie, "", { ...cookieOptions, sameSite: "strict", maxAge: 0 })
 }
 
 export async function endAdminSession() {
   const store = await cookies()
+  const token = store.get(sessionCookie)?.value
   try {
+    if (token && backendConfigured) await database().adminUnlock.deleteMany({ where: { session_hash: digest(token) } })
     if (adminAuthConfigured && store.has(sessionCookie)) await auth().signOut().catch(() => {})
   } finally {
     for (const name of [sessionCookie, sessionDataCookie, attemptCookie, googleCookie, unlockedCookie, legacyCookie]) {

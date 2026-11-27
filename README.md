@@ -15,7 +15,7 @@ Open http://localhost:3000. The catalogue shows published inventory from the dat
 
 ## Connect Neon and create an admin
 
-1. Run `neon deploy` from the linked project to pull the pooled `DATABASE_URL`, direct `DATABASE_URL_UNPOOLED`, and `NEON_AUTH_BASE_URL` into the local environment file. For manual setup, copy both connection strings from the Neon **Connect** dialog into `.env.local`. `DIRECT_URL` is also accepted for a manually configured direct connection. Use the database owner when applying migrations. Set the pooled URL as a server-only environment variable in Vercel. Keep the direct URL in the migration environment.
+1. Run `neon deploy` from the linked project to pull the pooled `DATABASE_URL`, direct `DATABASE_URL_UNPOOLED`, and `NEON_AUTH_BASE_URL` into the local environment file. For manual setup, copy both connection strings from the Neon **Connect** dialog into `.env.local`. `DIRECT_URL` is also accepted for a manually configured direct connection. Use the database owner when applying migrations. Create a dedicated Postgres login with no ownership, role-management or RLS-bypass privileges and grant it membership in `vault_store_runtime` after migration. Use its pooled URL for `DATABASE_URL` locally and in the Cloudflare Worker secret. Place `DATABASE_URL_UNPOOLED` in the ignored `.env.migrations.local` file or supply it to the migration job. Next.js loads the runtime credentials from `.env.local`.
 2. Run `npm ci` to generate Prisma Client, then run `npm run db:deploy` to apply the schema. Migrations are run explicitly so that a preview build cannot change a production database.
 ### Set up admin sign-in with Google
 

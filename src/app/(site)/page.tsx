@@ -43,15 +43,19 @@ export default function Home() {
   return (
     <>
       <HeroSlider />
-      <Reveal className="home-content">
-        <CollectionEdit />
-        <Experience />
-        <EngagementEdit />
+      <div className="home-content">
+        <Reveal>
+          <CollectionEdit />
+          <Experience />
+          <EngagementEdit />
+        </Reveal>
         <Suspense fallback={<div id="gallery" className="section dark-panel min-h-96" aria-busy="true" aria-label="Loading the gem gallery" />}><FeaturedGallery /></Suspense>
-        <CareEdit />
-        <Faq />
-        <FinalCall />
-      </Reveal>
+        <Reveal>
+          <CareEdit />
+          <Faq />
+          <FinalCall />
+        </Reveal>
+      </div>
     </>
   )
 }

@@ -15,6 +15,15 @@ const globalDatabase = globalThis as typeof globalThis & {
 
 export function database() {
   if (!url) throw new Error("DATABASE_URL is required")
+
+  // Worker sockets belong to the request that opens them. Neon already pools
+  // connections server-side, so release each socket after its first use.
+  if (globalThis.navigator?.userAgent === "Cloudflare-Workers") {
+    return new PrismaClient({
+      adapter: new PrismaPg({ connectionString: url, max: 5, maxUses: 1, connectionTimeoutMillis: 8000 }),
+    })
+  }
+
   const cached = globalDatabase.vaultDatabase
   // Next.js hot reload preserves globalThis when the generated Prisma module changes.
   if (cached?.client && (process.env.NODE_ENV !== "development" || cached.generatedClient === PrismaClient)) {

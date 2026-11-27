@@ -1,3 +1,4 @@
+import { headers } from "next/headers"
 import Link from "next/link"
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
@@ -24,7 +25,7 @@ export async function generateMetadata({ params }: Props) {
   return pageMetadata(stone.name, stone.description, "/shop/" + stone.slug)
 }
 
-function ProductData({ stone }: { stone: Stone }) {
+async function ProductData({ stone }: { stone: Stone }) {
   const path = "/shop/" + stone.slug
   const image = productPhotoUrl(stone.image_url, 1200)
   const product = {
@@ -44,7 +45,7 @@ function ProductData({ stone }: { stone: Stone }) {
       { "@type": "PropertyValue", name: "Price (LKR)", value: stone.price_lkr },
     ],
   }
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(product) }} />
+  return <script nonce={(await headers()).get("x-nonce") ?? undefined} type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(product) }} />
 }
 
 async function RelatedStones({ stone }: { stone: Stone }) {

@@ -12,12 +12,13 @@ export function proxy(request: NextRequest) {
   ].join("; ")
   const headers = new Headers(request.headers)
   headers.set("Content-Security-Policy", policy)
+  headers.set("x-nonce", nonce)
   const response = NextResponse.next({ request: { headers } })
   response.headers.set("Content-Security-Policy", policy)
   response.headers.set("Cache-Control", "private, no-store")
   // Keep the origin on same-origin admin form submissions before React hydrates.
-  response.headers.set("Referrer-Policy", admin ? "same-origin" : "no-referrer")
+  response.headers.set("Referrer-Policy", admin ? "same-origin" : request.nextUrl.pathname.startsWith("/order/") ? "no-referrer" : "strict-origin-when-cross-origin")
   return response
 }
 
-export const config = { matcher: ["/vault8@vein@8/:path*", "/checkout", "/order/:path*"] }
+export const config = { matcher: ["/((?!api/|_next/|images/|brand/|.*\\.[^/]+$).*)", "/shop/:path*", "/vault8@vein@8/:path*", "/order/:path*"] }
