@@ -8,6 +8,12 @@ import { checkoutConfig } from "@/lib/checkout"
 import { getGemCategories } from "@/lib/gem-categories"
 import { gemLinks } from "@/config/site"
 import { CatalogueUnavailableError } from "@/lib/backend"
+import { getUsdRate } from "@/lib/exchange-rate"
+import { CurrencyRateSync } from "./currency-rate-sync"
+
+async function CurrencyRate() {
+  return <CurrencyRateSync rate={await getUsdRate()} />
+}
 
 async function Footer() {
   const result = await getGemCategories().catch(error => {
@@ -24,6 +30,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
   return <>
     <CartHydration />
     <SiteHeader />
+    <Suspense fallback={null}><CurrencyRate /></Suspense>
     <div className="site-frame">
       <div className="site-page-surface">{children}</div>
       <Suspense fallback={null}><Footer /></Suspense>

@@ -3,6 +3,11 @@ import { z } from "zod"
 const shortText = z.string().trim().min(1).max(120)
 const dimension = z.coerce.number().min(.01).max(999999.99).multipleOf(.01)
 export const slugInput = z.string().trim().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/).max(80)
+export const editableStockStatuses = ["available", "unavailable"] as const
+
+export function canEditStock(status: string | undefined) {
+  return status === "available" || status === "unavailable"
+}
 
 export const productInput = z.object({
   slug: slugInput,
@@ -19,6 +24,7 @@ export const productInput = z.object({
   origin: shortText,
   description: z.string().trim().min(1).max(3000),
   price_lkr: z.coerce.number().int().min(1).max(100000000),
+  status: z.enum(editableStockStatuses).optional(),
   certified: z.boolean(),
   is_featured: z.boolean(),
   is_published: z.boolean(),

@@ -1,3 +1,4 @@
+import { canEditStock, editableStockStatuses } from "@/lib/admin-product"
 import Link from "next/link"
 import { adminIdentity, requireAdminDatabase } from "@/lib/admin-auth"
 import { formatPrice } from "@/lib/pricing"
@@ -9,7 +10,7 @@ import { deleteProduct, readMessage, setProductVisibility, shipOrder, signOut } 
 import { AdminShopFilters } from "./shop-filters"
 
 const panels = { inventory: "Inventory", filters: "Shop filters", orders: "Orders", inbox: "Inbox" } as const
-const stockFilters = ["available", "reserved", "sold"] as const
+const stockFilters = [...editableStockStatuses, "reserved", "sold"] as const
 const results = {
   unavailable: "This change could not be applied. Refresh and check the current record.",
   saved: "Listing saved.",
@@ -139,7 +140,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/vault8@vei
               <p className="admin-muted text-sm"><span className="admin-stock-status" data-status={row.status}>{row.status}</span> · {row.is_published ? "Published" : "Draft"}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {row.status === "available" && <Link className="admin-button" href={"/vault8@vein@8/products/" + row.id} prefetch={false}>Edit listing</Link>}
+              {canEditStock(row.status) && <Link className="admin-button" href={"/vault8@vein@8/products/" + row.id} prefetch={false}>Edit listing</Link>}
               {row.status !== "reserved" && <form action={setProductVisibility.bind(null, row.id, !row.is_published)}>
                 <button type="submit" className="admin-button">{row.is_published ? "Unpublish" : "Publish"}</button>
               </form>}
@@ -150,7 +151,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/vault8@vei
               )}
               {row.is_published && categoryNames.get(row.gem_type)?.is_visible === false && <Link className="admin-text-link" href={nav("filters") + "#filter-type"}>Manage gem type</Link>}
             </div>
-            {row.status === "available" && <details className="admin-delete">
+            {canEditStock(row.status) && <details className="admin-delete">
               <summary>Delete listing</summary>
               <form action={deleteProduct.bind(null, row.id)} className="mt-3 grid gap-2">
                 <p>Remove {row.name} from the shop and inventory. Existing order records are kept.</p>

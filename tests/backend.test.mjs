@@ -6,6 +6,7 @@ import { PGlite } from "@electric-sql/pglite"
 import { asPayHereAmount, checkoutHash, notification } from "../src/lib/payhere.ts"
 import { productInput } from "../src/lib/admin-product.ts"
 import { productPhotoUrl } from "../src/lib/product-photo.ts"
+import { formatPrice } from "../src/lib/pricing.ts"
 
 const db = new PGlite()
 const mint = {
@@ -133,6 +134,20 @@ test("prices come from the catalogue and only available live stones can be held"
   await assert.rejects(reserve([first.id]), /stones are unavailable/)
 })
 
+test("an unavailable published stone cannot be reserved until restored", async () => {
+  const product = await stone({ status: "unavailable" })
+  await assert.rejects(reserve([product.id]), /stones are unavailable/)
+  await db.query("update public.products set status = 'available' where id = $1", [product.id])
+  assert.ok(await reserve([product.id]))
+  assert.equal(await status("products", product.id), "reserved")
+})
+
+test("USD prices use the supplied reference rate and fall back to LKR", () => {
+  assert.match(formatPrice(168000, "USD", 320), /^USD\s+525$/)
+  assert.match(formatPrice(168000, "USD"), /^LKR\s+168,000$/)
+  assert.match(formatPrice(168000, "LKR", 320), /^LKR\s+168,000$/)
+})
+
 test("deleting listings preserves order history while preventing checkout", async () => {
   await db.exec("insert into public.gem_categories (slug,name) values ('aquamarine','Aquamarine')")
   const product = await stone({ gem_type: "aquamarine" })
@@ -256,6 +271,8 @@ test("admin validates editable listing values before database writes", () => {
   assert.equal(productInput.safeParse({ ...mint, slug: "--broken" }).success, false)
   assert.equal(productInput.safeParse({ ...mint, carat: "2.145" }).success, false)
   assert.equal(productInput.safeParse({ ...mint, price_lkr: 0 }).success, false)
+  assert.equal(productInput.safeParse({ ...mint, status: "unavailable" }).success, true)
+  assert.equal(productInput.safeParse({ ...mint, status: "reserved" }).success, false)
   assert.equal(productInput.safeParse({ ...mint, collections: ["Invalid collection"] }).success, false)
   assert.equal(productInput.safeParse({ ...mint, cut: "Marquise", collections: ["estate-stones"] }).success, true)
 })

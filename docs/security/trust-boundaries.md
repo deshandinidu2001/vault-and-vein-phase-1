@@ -33,6 +33,7 @@ flowchart TB
     MAIL["Admin email inbox"]
     CLOUDINARY["Cloudinary"]
     PAYHERE["PayHere"]
+    RATES["Public exchange-rate feed"]
 
     BUYER <-->|"F1 · browse and contact<br/>F2 · prepare checkout"| PUBLIC
     OPERATOR <-->|"F3 · password, PIN and admin actions"| AUTH
@@ -45,6 +46,7 @@ flowchart TB
     CLOUDINARY -->|"F7 · public product images"| BUYER
     BUYER <-->|"F8 · hosted checkout"| PAYHERE
     PAYHERE -->|"F9 · signed notification"| PUBLIC
+    PUBLIC <-->|"F10 · dated USD/LKR reference rate"| RATES
 
     style CLIENT stroke-dasharray: 5 4
     style APP stroke-dasharray: 5 4
@@ -62,6 +64,7 @@ flowchart TB
 | **B4 · Next.js and admin browser ↔ identity services** | F4 | Managed Better Auth validates the password, changes or resets it, and sends email codes. The app checks each privileged request against the live Neon session and verifies PIN setup and reset codes through Neon. |
 | **B5 · Application and browsers ↔ Cloudinary** | F6–F7 | The server sends validated image uploads using server-only Cloudinary credentials and stores approved image references. Browsers fetch public product photos from the CDN. |
 | **B6 · Browser and application ↔ PayHere** | F2, F8–F9 | The shopper submits a signed LKR form with order and delivery details and enters card details at PayHere. The return or cancel flow shows status. A verified server notification authorizes a payment state transition. |
+| **B7 · Application ↔ exchange-rate feed** | F10 | The server fetches a public USD/LKR rate from fixed HTTPS endpoints without sending shopper or order data. The rate is used for display estimates. The database determines checkout totals from LKR prices. |
 
 ### Code references
 

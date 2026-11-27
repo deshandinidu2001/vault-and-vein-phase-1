@@ -8,7 +8,7 @@ import { endAdminSession, requireAdminDatabase } from "@/lib/admin-auth"
 import { Prisma } from "@/generated/prisma/client"
 import { expireCheckouts } from "@/lib/checkout"
 import { publicSettingsTag } from "@/lib/backend"
-import { productFlags, productInput, slugInput } from "@/lib/admin-product"
+import { editableStockStatuses, productFlags, productInput, slugInput } from "@/lib/admin-product"
 import { readGemCategories } from "@/lib/gem-categories"
 import { discardProductPhoto, uploadProductPhotos } from "@/lib/cloudinary"
 import { maxProductPhotos } from "@/lib/product-photo"
@@ -44,7 +44,7 @@ export async function saveProduct(id: string | null, form: FormData) {
   if (!input.success) redirect(returnTo + "?result=invalid")
   const [categories, settings, existing] = await Promise.all([
     readGemCategories(db), readShopFilterSettings(db),
-    id ? db.product.findFirst({ where: { id, archived_at: null, is_sample: false, status: "available" } }) : null,
+    id ? db.product.findFirst({ where: { id, archived_at: null, is_sample: false, status: { in: [...editableStockStatuses] } } }) : null,
   ])
   if (!categories.some(({ slug }) => slug === input.data.gem_type)) redirect(returnTo + "?result=invalid")
   if (id && !existing) redirect(returnTo + "?result=unavailable")
@@ -62,7 +62,7 @@ export async function saveProduct(id: string | null, form: FormData) {
   try {
     if (id) {
       const { count } = await db.product.updateMany({
-        where: { id, status: "available", archived_at: null, is_sample: false }, data: input.data,
+        where: { id, status: { in: [...editableStockStatuses] }, archived_at: null, is_sample: false }, data: input.data,
       })
       if (count === 0) throw new Error("Listing is no longer available")
     } else {
@@ -88,7 +88,7 @@ export async function editProductGallery(id: string, revision: string, operation
   if (!z.uuid().safeParse(id).success || !z.uuid().safeParse(revision).success) redirect("/vault8@vein@8")
   const url = (result: string) => "/vault8@vein@8/products/" + id + "?result=" + result + "#product-photos"
   const current = await db.product.findFirst({
-    where: { id, status: "available", archived_at: null, is_sample: false },
+    where: { id, status: { in: [...editableStockStatuses] }, archived_at: null, is_sample: false },
     select: { image_url: true, gallery_urls: true, gallery_revision: true },
   })
   if (!current || current.gallery_revision !== revision) redirect(url("photo-stale"))
@@ -113,7 +113,7 @@ export async function editProductGallery(id: string, revision: string, operation
 
   const result = await db.product.updateMany({
     data: { image_url: photos[0] ?? null, gallery_urls: photos.slice(1), gallery_revision: randomUUID() },
-    where: { id, gallery_revision: revision, status: "available", archived_at: null, is_sample: false },
+    where: { id, gallery_revision: revision, status: { in: [...editableStockStatuses] }, archived_at: null, is_sample: false },
   }).catch(() => null)
   if (!result?.count) {
     if (uploaded.length) {
@@ -149,7 +149,7 @@ export async function deleteProduct(id: string) {
   try {
     await expireCheckouts(db)
     const result = await db.product.updateMany({
-      where: { id, status: "available", archived_at: null },
+      where: { id, status: { in: [...editableStockStatuses] }, archived_at: null },
       data: { is_published: false, archived_at: new Date() },
     })
     count = result.count

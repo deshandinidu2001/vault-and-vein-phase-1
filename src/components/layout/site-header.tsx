@@ -22,7 +22,7 @@ export function BrandBadge({ size = 40 }: { size?: number }) {
 export function SiteHeader() {
   const count = useCart((state) => state.items.length)
   const path = usePathname()
-  const { overlay, menuOpened, openMenu, openCart, currency, toggleCurrency } = useUi()
+  const { overlay, menuOpened, openMenu, openCart, currency, usdRate, toggleCurrency } = useUi()
   const [compact, setCompact] = useState(false)
   const progress = useRef<HTMLDivElement>(null)
   const active = (href: string) => href === "/" ? path === "/" : path === href || path.startsWith(href + "/")
@@ -62,7 +62,9 @@ export function SiteHeader() {
             <ShoppingBag size={20} aria-hidden="true" />
             {count > 0 && <span aria-hidden="true" className="absolute -right-1 -top-1 grid size-5 place-items-center rounded-full bg-gold text-[10px] font-bold text-deep">{count}</span>}
           </button>
-          <button className="currency-button" type="button" aria-label={"Currency " + currency + ". Switch currency"} onClick={toggleCurrency}>{currency}</button>
+          <button className="currency-button" type="button" disabled={!usdRate}
+            aria-label={usdRate ? "Currency " + currency + ". Switch currency" : "Currency LKR only"}
+            onClick={toggleCurrency}>{currency}</button>
           <button className="icon-button mobile-menu" type="button" aria-label="Open menu" aria-haspopup="dialog" aria-expanded={overlay === "menu"} onClick={openMenu}><Menu size={20} aria-hidden="true" /></button>
         </div>
         <div className="header-progress" aria-hidden="true"><div ref={progress} /></div>

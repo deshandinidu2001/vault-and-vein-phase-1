@@ -13,8 +13,6 @@ export const site = {
   returnWindowDays: null as number | null,
   shippingNote: "Ask about delivery to your destination, available insurance and the full shipping cost before placing an order.",
   replyTime: "We reply within one business day.",
-  // Illustrative conversion for Phase 1, expressed as LKR per USD.
-  lkrPerUsd: 300,
 } as const
 
 export const navigation = [

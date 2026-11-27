@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react"
 import { ProductActions } from "@/components/product/product-actions"
 import { ProductGallery } from "@/components/product/product-gallery"
 import { StoneCard } from "@/components/shop/stone-card"
-import { StonePrice } from "@/components/shop/stone-price"
+import { StonePrice, UsdRateNote } from "@/components/shop/stone-price"
 import { Badge } from "@/components/ui/badge"
 import { getRelated, getStoneBySlug } from "@/lib/data"
 import { stoneCategory, type Stone } from "@/types/stone"
@@ -85,7 +85,7 @@ export default async function StoneDetail({ params }: Props) {
         <div className="product-purchase grid gap-4">
           {stone.is_sample ? <p className="text-sm text-muted-foreground">Sample listing for display only.</p> : <>
             <span className="text-2xl font-semibold text-emerald"><StonePrice lkr={stone.price_lkr} both /></span>
-            <p className="text-sm text-muted-foreground">USD is an estimate.</p>
+            <UsdRateNote />
           </>}
           <ProductActions stone={stone} paymentsEnabled={Boolean(checkoutConfig())} />
         </div>

@@ -10,7 +10,7 @@ import { Reveal } from "@/components/animation/reveal"
 import { SectionHeading } from "@/components/ui/section-heading"
 import { StoneMedia } from "@/components/product/stone-media"
 import { useUi } from "@/store/ui"
-import { formatPrice } from "@/lib/pricing"
+import { StonePrice } from "@/components/shop/stone-price"
 import { stoneCategory, type Stone } from "@/types/stone"
 
 const filters = [["all", "All"], ["sapphire", "Sapphire"], ["spinel", "Spinel"], ["garnet", "Garnet"], ["rare", "Rare"]] as const
@@ -24,7 +24,6 @@ export function GemGallery({ stones, categoryLabels }: { stones: Stone[]; catego
   const rail = useRef<HTMLUListElement>(null)
   const openingButton = useRef<HTMLButtonElement>(null)
   const reduced = useReducedMotion()
-  const currency = useUi((state) => state.currency)
   const openEnquiry = useUi((state) => state.openEnquiry)
   const visible = stones.filter((stone) => filter === "all" || (filter === "rare"
     ? stone.collections.includes("rare") : stone.gem_type === filter)).slice(0, previewSize)
@@ -124,7 +123,7 @@ export function GemGallery({ stones, categoryLabels }: { stones: Stone[]; catego
                   <div><dt className="text-muted-foreground">Cut</dt><dd>{stone.cut}</dd></div>
                   <div><dt className="text-muted-foreground">Weight</dt><dd>{stone.carat} ct</dd></div>
                   <div><dt className="text-muted-foreground">Colour</dt><dd>{stone.colour}</dd></div>
-                  <div><dt className="text-muted-foreground">Price</dt><dd>{formatPrice(stone.price_lkr, currency)}</dd></div>
+                  <div><dt className="text-muted-foreground">Price</dt><dd><StonePrice lkr={stone.price_lkr} /></dd></div>
                 </dl>
                 <div className="flex flex-wrap gap-2">
                   <Link href={"/shop/" + stone.slug} onClick={() => setSelected(null)} className="pill pill-primary">View details</Link>

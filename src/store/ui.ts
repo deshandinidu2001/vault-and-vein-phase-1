@@ -1,10 +1,12 @@
 import { create } from "zustand"
+import type { UsdRate } from "@/lib/pricing"
 
 export type Currency = "LKR" | "USD"
 export type EnquiryStone = { slug: string; name: string; gem_type: string }
 
 type UiState = {
   currency: Currency
+  usdRate: UsdRate | null
   toggleCurrency: () => void
   overlay: "cart" | "enquiry" | "menu" | null
   menuOpened: boolean
@@ -25,6 +27,7 @@ function focusedElement() {
 
 export const useUi = create<UiState>((set) => ({
   currency: "LKR",
+  usdRate: null,
   toggleCurrency: () => set(({ currency }) => ({ currency: currency === "LKR" ? "USD" : "LKR" })),
   overlay: null,
   menuOpened: false,

@@ -30,6 +30,7 @@ model Product {
   origin           String
   description      String
   price_lkr        Int
+  /// Available and unavailable are set in inventory. Checkout manages reserved and sold.
   status           String      @default("available")
   reserved_until   DateTime?   @db.Timestamptz(6)
   is_featured      Boolean     @default(false)

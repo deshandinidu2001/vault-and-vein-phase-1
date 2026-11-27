@@ -1,6 +1,6 @@
 export type GemType = string
 export type GemCategory = { slug: string; name: string; is_visible: boolean }
-export type StoneStatus = "available" | "reserved" | "sold"
+export type StoneStatus = "available" | "unavailable" | "reserved" | "sold"
 
 export type Stone = {
   id: string

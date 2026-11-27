@@ -19,7 +19,7 @@ export function ProductActions({ stone, paymentsEnabled }: { stone: Stone; payme
         toast.success(stone.name + " added to your cart.")
       }}>
         {alreadyInCart ? <Check size={18} aria-hidden="true" /> : <ShoppingBag size={18} aria-hidden="true" />}
-        {alreadyInCart ? "In your cart" : stone.status === "available" ? "Add to Cart" : "Unavailable"}
+        {stone.status !== "available" ? "Unavailable" : alreadyInCart ? "In your cart" : "Add to Cart"}
       </button>
       <EnquireButton stones={[stone]}>Ask about this stone</EnquireButton>
     </div>

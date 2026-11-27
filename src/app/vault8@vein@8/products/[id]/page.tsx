@@ -1,15 +1,18 @@
 import Link from "next/link"
+import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { z } from "zod"
 import { requireAdminDatabase } from "@/lib/admin-auth"
 import { expireCheckouts } from "@/lib/checkout"
-import { productFlags, type ProductInput } from "@/lib/admin-product"
+import { canEditStock, editableStockStatuses, productFlags, type ProductInput } from "@/lib/admin-product"
 import { readGemCategories } from "@/lib/gem-categories"
 import { cloudinaryConfigured } from "@/lib/cloudinary"
 import { readShopFilterSettings } from "@/lib/shop-filter-settings"
 import { normalizeShopOption, shopFilterConfig } from "@/lib/shop-filter-config"
 import { maxProductPhotos } from "@/lib/product-photo"
 import { saveProduct } from "../../actions"
+import { getUsdRate } from "@/lib/exchange-rate"
+import { formatPrice } from "@/lib/pricing"
 import { GalleryEditor } from "./gallery-editor"
 import { PhotoPicker } from "./photo-picker"
 
@@ -42,7 +45,7 @@ export default async function EditProduct({ params, searchParams }: PageProps<"/
   const { result } = await searchParams
   const [categories, settings] = await Promise.all([readGemCategories(db), readShopFilterSettings(db)])
   const photosEnabled = cloudinaryConfigured()
-  let product: (ProductInput & { status: string; image_url: string | null; gallery_urls: string[]; gallery_revision: string }) | undefined
+  let product: (Omit<ProductInput, "status"> & { status: string; image_url: string | null; gallery_urls: string[]; gallery_revision: string }) | undefined
   if (id !== "new") {
     if (!z.uuid().safeParse(id).success) notFound()
     await expireCheckouts(db)
@@ -60,8 +63,8 @@ export default async function EditProduct({ params, searchParams }: PageProps<"/
     <Link href="/vault8@vein@8" className="admin-text-link">Back to inventory</Link>
     <h1>{product ? "Edit listing" : "New listing"}</h1>
     {message && <p className="admin-notice" role={result === "photo-saved" ? "status" : "alert"}>{message}</p>}
-    {product?.status === "available" && revision && <GalleryEditor id={id} revision={revision} stone={product} uploads={photosEnabled} />}
-    {product && product.status !== "available" ? <p>{product.name} is {product.status}. Listing details are locked while the stone is held or sold.</p> :
+    {product && canEditStock(product.status) && revision && <GalleryEditor id={id} revision={revision} stone={product} uploads={photosEnabled} />}
+    {product && !canEditStock(product.status) ? <p>{product.name} is {product.status}. Listing details are locked while the stone is held or sold.</p> :
       <form action={saveProduct.bind(null, product ? id : null)} className="admin-panel grid gap-5 p-5 sm:p-7">
         {!product && <fieldset className="admin-photo-field">
           <legend className="font-semibold">Product photos</legend>
@@ -88,6 +91,14 @@ export default async function EditProduct({ params, searchParams }: PageProps<"/
                 value={product && normalizeShopOption(product.cut) === value ? product.cut : label}>{label}</option>)}
             </select>
           </label>
+          <label className="grid gap-2">Availability
+            <select name="status" className={inputStyle} defaultValue={product?.status ?? "available"}>
+              {editableStockStatuses.map(status => <option key={status} value={status}>
+                {status === "available" ? "Available" : "Unavailable"}
+              </option>)}
+            </select>
+            <span className="admin-muted text-sm">A published unavailable stone stays visible in the shop.</span>
+          </label>
           {numberFields.map(([name, label]) => {
             const price = name === "price_lkr"
             return <label key={name} className="grid gap-2">{label}
@@ -96,6 +107,7 @@ export default async function EditProduct({ params, searchParams }: PageProps<"/
             </label>
           })}
         </div>
+        <Suspense fallback={null}><UsdEstimate lkr={product?.price_lkr} /></Suspense>
         <label className="grid gap-2">Description
           <textarea className={inputStyle + " py-2"} rows={4} name="description" maxLength={3000} defaultValue={product?.description} required />
         </label>
@@ -118,4 +130,14 @@ export default async function EditProduct({ params, searchParams }: PageProps<"/
         <button className="admin-button admin-button-primary w-fit" type="submit">Save listing</button>
       </form>}
   </section>
+}
+
+async function UsdEstimate({ lkr }: { lkr?: number }) {
+  const rate = await getUsdRate()
+  return <p className="admin-muted text-sm">
+    {rate ? <>
+      Daily rate for {rate.date} · 1 USD = LKR {rate.lkrPerUsd.toFixed(2)}
+      {lkr !== undefined && <> · Saved price ≈ {formatPrice(lkr, "USD", rate.lkrPerUsd)}</>}
+    </> : "USD estimates are temporarily unavailable."}
+  </p>
 }
