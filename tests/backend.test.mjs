@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { createHash, randomUUID } from "node:crypto"
-import { readFile } from "node:fs/promises"
+import { readFile, readdir } from "node:fs/promises"
 import { after, before, test } from "node:test"
 import { PGlite } from "@electric-sql/pglite"
 import { asPayHereAmount, checkoutHash, notification } from "../src/lib/payhere.ts"
@@ -8,7 +8,6 @@ import { productInput } from "../src/lib/admin-product.ts"
 import { productPhotoUrl } from "../src/lib/product-photo.ts"
 
 const db = new PGlite()
-const migration = await readFile(new URL("../prisma/migrations/20261123000100_initial/migration.sql", import.meta.url), "utf8")
 const mint = {
   slug: "mint", name: "Mint Stone", gem_type: "sapphire", cut: "Oval", carat: 2.14,
   length_mm: 8.30, width_mm: 6.40, depth_mm: 4.20, colour: "Green", clarity: "Eye clean",
@@ -18,7 +17,10 @@ const mint = {
 const customer = { first_name: "Example", last_name: "Customer", email: "buyer@example.test" }
 
 before(async () => {
-  await db.exec(migration)
+  const migrations = new URL("../prisma/migrations/", import.meta.url)
+  for (const name of (await readdir(migrations)).filter(name => /^\d/.test(name)).sort()) {
+    await db.exec(await readFile(new URL(name + "/migration.sql", migrations), "utf8"))
+  }
   await db.exec("create role store_guest")
 })
 after(() => db.close())
@@ -58,6 +60,22 @@ async function status(table, id) {
   const { rows } = await db.query("select status from public." + table + " where id = $1", [id])
   return rows[0].status
 }
+
+test("runtime checkout uses RLS and cannot write receipts, change totals or alter schema", async () => {
+  const product = await stone()
+  await db.exec("set role vault_store_runtime")
+  try {
+    assert.equal((await db.query("select row_security_active('public.orders') as active")).rows[0].active, true)
+    const order = await reserve([product.id])
+    assert.equal(await event(order, "2"), true)
+    for (const sql of ["update public.orders set total_lkr = 0", "delete from public.payment_events",
+      "select * from public.rate_limits", "alter table public.products disable row level security"]) {
+      await assert.rejects(db.exec(sql), /permission denied|must be owner/)
+    }
+  } finally {
+    await db.exec("reset role")
+  }
+})
 
 test("filter settings preserve listings and enforce valid options", async () => {
   const product = await stone({ cut: "Marquise", collections: ["estate-stones"] })
@@ -165,6 +183,7 @@ test("paid, pending, duplicate and chargeback notifications preserve inventory",
   assert.equal(await event(order, "0", payment), true)
   assert.equal(await event(order, "2", payment), true)
   assert.equal(await event(order, "2", payment), true)
+  assert.equal(await event(order, "2", randomUUID()), true)
   assert.equal(await event(order, "-1", payment), true)
   assert.equal(await status("orders", order.id), "paid")
   assert.equal(await status("products", product.id), "sold")

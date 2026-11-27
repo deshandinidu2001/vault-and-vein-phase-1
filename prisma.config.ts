@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs"
 import { defineConfig } from "prisma/config"
 
-for (const path of [".env.local", ".env"]) {
+for (const path of [".env.migrations.local", ".env.local", ".env"]) {
   if (existsSync(path)) process.loadEnvFile(path)
 }
 

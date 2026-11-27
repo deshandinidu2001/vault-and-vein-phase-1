@@ -160,9 +160,16 @@ test("configured checkout, webhook verification, durable messages and admin fulf
     headers: { Origin: "https://unrelated.example" },
   })
   expect(crossOriginLock.status()).toBe(403)
+  const priorUnlock = (await page.context().cookies()).find(cookie => cookie.name === "__Host-vault-admin-pin")!
   await page.getByRole("button", { name: "View storefront" }).click()
   await expect(page).toHaveURL(url => url.pathname === "/")
   expect((await page.context().cookies()).some(cookie => cookie.name === "__Host-vault-admin-pin")).toBe(false)
+  await page.context().addCookies([priorUnlock])
+  const lockedTab = await page.context().newPage()
+  await lockedTab.goto("/vault8@vein@8")
+  await expect(lockedTab).toHaveURL(/\/vault8@vein@8\/login$/)
+  await lockedTab.close()
+  await page.context().clearCookies({ name: priorUnlock.name })
   await page.goBack()
   await expect(page.getByRole("heading", { name: "Enter admin PIN" })).toBeVisible()
   await expect(page.getByRole("heading", { name: "Store admin" })).toHaveCount(0)

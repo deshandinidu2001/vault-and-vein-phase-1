@@ -1,6 +1,6 @@
 # Vault & Vein trust boundary diagram
 
-The diagram models the application in its configured Vercel deployment. It shows which component controls each operation and where data crosses between the browser, the app, Neon and the other hosted services. The dashed boxes outline trust zones. B2 is a privilege boundary within the Next.js application.
+The diagram models the application in its configured Cloudflare Workers deployment. It shows which component controls each operation and where data crosses between the browser, the app, Neon and the other hosted services. The dashed boxes outline trust zones. B2 is a privilege boundary within the Next.js application.
 
 ```mermaid
 flowchart TB
@@ -12,7 +12,7 @@ flowchart TB
         BUYER --- CART
     end
 
-    subgraph APP["Vercel · Next.js server"]
+    subgraph APP["Cloudflare Workers · Next.js server"]
         direction TB
         PUBLIC["Storefront and public APIs"]
 
@@ -70,3 +70,5 @@ flowchart TB
 - [Database schema](../../prisma/schema.prisma) · [Database policies and functions](../../prisma/migrations/20261123000100_initial/migration.sql) · [Cloudinary uploads](../../src/lib/cloudinary.ts)
 
 See the [STRIDE diagram](stride.md) for the threats and checks associated with these boundaries. The diagram describes repository behavior. Hosted provider settings and permissions require deployment-side verification. [Microsoft data-flow modeling reference](https://learn.microsoft.com/en-us/azure/security/develop/threat-modeling-tool-feature-overview)
+
+The runtime login inherits `vault_store_runtime`. The separate migration owner owns the tables and constrained checkout functions. Order dispatch permits the paid-to-shipped transition. Server-side unlock records bind PIN proofs to a session and are revoked on lock or sign-out. Payment processing serializes receipts by order and signed status. Provider payment IDs are metadata.

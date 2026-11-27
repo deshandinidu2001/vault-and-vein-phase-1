@@ -109,7 +109,6 @@ export async function getStones(filters: StoneFilters = {}) {
 }
 
 async function selectPreview(limit: number) {
-  await connection()
   try {
     const products = await database().product.findMany({
       select: catalogueFields, where: { ...catalogueFilter, is_sample: false }, take: limit,
@@ -136,6 +135,8 @@ export const getStoneBySlug = cache(async (slug: string) => {
 })
 
 export async function getFeatured(limit = 8) {
+  // The hosted Worker can receive its database secret after the build.
+  await connection()
   return catalogueConfigured ? selectPreview(limit) : []
 }
 

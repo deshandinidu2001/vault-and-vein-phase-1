@@ -1,14 +1,18 @@
 import { spawn } from "node:child_process"
-import { readFile } from "node:fs/promises"
+import { readFile, readdir } from "node:fs/promises"
 import { PGlite } from "@electric-sql/pglite"
 import { PGLiteSocketServer } from "@electric-sql/pglite-socket"
 import { startAuthFixture } from "./neon-auth-fixture.mjs"
 import { configuredPort, databasePort } from "./ports.mjs"
 
 const db = await PGlite.create()
-await db.exec(await readFile(new URL("../../prisma/migrations/20261123000100_initial/migration.sql", import.meta.url), "utf8"))
-await db.exec(await readFile(new URL("../../prisma/migrations/20261125000100_store_admin_pin/migration.sql", import.meta.url), "utf8"))
+const migrations = new URL("../../prisma/migrations/", import.meta.url)
+for (const name of (await readdir(migrations)).filter(name => /^\d/.test(name)).sort()) {
+  await db.exec(await readFile(new URL(name + "/migration.sql", migrations), "utf8"))
+}
 await db.exec(`
+  create role fixture_runtime login;
+  grant vault_store_runtime to fixture_runtime;
   insert into public.products
   (id,slug,name,gem_type,cut,carat,length_mm,width_mm,depth_mm,colour,clarity,treatment,origin,description,price_lkr,is_published,tint)
   values ('fd9f8831-e604-48cc-9d2c-79860244d258','fixture-sapphire','Fixture Sapphire','sapphire','Oval',2,8,6,4,'Blue','Eye clean','Heated','Sri Lanka','Browser fixture only.',125000,true,'#253e8c'),
@@ -27,7 +31,7 @@ const child = spawn(process.execPath, ["./node_modules/next/dist/bin/next", "dev
   stdio: "inherit",
   env: {
     ...process.env, VAULT_VEIN_BROWSER_FIXTURE: "1", NEXT_PUBLIC_SITE_URL: "https://vault-fixture.example",
-    DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:" + databasePort + "/postgres?sslmode=disable",
+    DATABASE_URL: "postgresql://fixture_runtime:fixture@127.0.0.1:" + databasePort + "/postgres?sslmode=disable",
     NEON_AUTH_BASE_URL: auth.url, NEON_AUTH_COOKIE_SECRET: "local-fixture-cookie-signing-secret-at-least-32",
     PAYHERE_MODE: "sandbox", PAYHERE_MERCHANT_ID: "000000", PAYHERE_MERCHANT_SECRET: "fixture-merchant-secret", SHIPPING_LKR: "500",
     CLOUDINARY_CLOUD_NAME: "vault-fixture", CLOUDINARY_API_KEY: "fixture-cloud-key", CLOUDINARY_API_SECRET: "fixture-cloud-secret",

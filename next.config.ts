@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const cloudflareBuild = process.env.VAULT_CLOUDFLARE_BUILD === "1";
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   images: { localPatterns: [
@@ -8,24 +10,16 @@ const nextConfig: NextConfig = {
     { pathname: "/images/editorial/**", search: "" },
   ] },
   distDir: process.env.VAULT_VEIN_BROWSER_FIXTURE === "1" ? ".next-fixture" : ".next",
+  ...(cloudflareBuild && {
+    // Turbopack's Wasm loader can trace unrelated dependency binaries.
+    // The Prisma Worker compiler is emitted separately as a Next.js chunk.
+    outputFileTracingExcludes: {
+      "/*": ["node_modules/{@electric-sql,@prisma/dev,prisma,miniflare,playwright-core,@tailwindcss}/**/*.wasm"],
+    },
+  }),
   experimental: { serverActions: { bodySizeLimit: "4mb" } },
   async headers() {
-    const publicPolicy = [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'" + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
-      "script-src-attr 'none'",
-      "style-src 'self' 'unsafe-inline'", "img-src 'self' data: blob: https://res.cloudinary.com",
-      "frame-src 'none'", "frame-ancestors 'none'",
-      "form-action 'self'",
-      "base-uri 'none'", "object-src 'none'",
-    ].join("; ");
     return [
-      // Proxy supplies the nonce policy for sensitive pages. OpenNext can give
-      // configured headers precedence over headers returned by Proxy.
-      { source: "/:path((?!vault8@vein@8(?:/|$)|checkout$|order(?:/|$)).*)", headers: [
-        { key: "Content-Security-Policy", value: publicPolicy },
-        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-      ] },
       { source: "/:path*", headers: [
         { key: "X-Frame-Options", value: "DENY" },
         { key: "X-Content-Type-Options", value: "nosniff" },
@@ -40,6 +34,11 @@ const nextConfig: NextConfig = {
     ];
   },
   turbopack: {
+    ...(cloudflareBuild && {
+      resolveAlias: {
+        "@/generated/prisma/client": "./src/generated/prisma-worker/client.ts",
+      },
+    }),
     rules: {
       "*.css": {
         loaders: ["@tailwindcss/turbopack"],

@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight } from "lucide-react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { Reveal } from "@/components/animation/reveal"
 import { SectionHeading } from "@/components/ui/section-heading"
 import { StoneMedia } from "@/components/product/stone-media"
 import { useUi } from "@/store/ui"
@@ -46,10 +47,10 @@ export function GemGallery({ stones, categoryLabels }: { stones: Stone[]; catego
   return (
     <section id="gallery" className="section dark-panel">
       <div className="wrap gallery-preview">
-        <div className="gallery-intro">
+        <Reveal className="gallery-intro">
           <SectionHeading eyebrow="The gem gallery">Find your next<br />signature stone.</SectionHeading>
           <p className="text-cream/80" data-reveal>Explore cuts and colour families. Select a stone to see its details.</p>
-        </div>
+        </Reveal>
         <ToggleGroup type="single" aria-label="Filter gallery by gem type" value={filter}
           onValueChange={(value) => {
             if (!value) return
