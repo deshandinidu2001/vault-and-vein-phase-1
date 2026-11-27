@@ -30,14 +30,14 @@ flowchart TB
         NEONAUTH["Managed Better Auth"]
     end
 
-    GOOGLE["Google OAuth"]
+    MAIL["Admin email inbox"]
     CLOUDINARY["Cloudinary"]
     PAYHERE["PayHere"]
 
     BUYER <-->|"F1 · browse and contact<br/>F2 · prepare checkout"| PUBLIC
-    OPERATOR <-->|"F3 · PIN and admin actions"| AUTH
-    AUTH <-->|"F4 · session and OTP"| NEONAUTH
-    NEONAUTH <-->|"F4 · OAuth"| GOOGLE
+    OPERATOR <-->|"F3 · password, PIN and admin actions"| AUTH
+    AUTH <-->|"F4 · passwords, sessions and OTP"| NEONAUTH
+    NEONAUTH -->|"F4 · verification and recovery codes"| MAIL
     PUBLIC <-->|"F5 · catalogue, orders and inbox"| DB
     AUTH <-->|"F5 · PIN and limits"| DB
     ADMIN <-->|"F5 · store records"| DB
@@ -57,9 +57,9 @@ flowchart TB
 | Boundary | Flows | Data and trust decisions |
 | --- | --- | --- |
 | **B1 · Browser ↔ application** | F1–F3 | The browser carries cart display data, shopper contact or delivery details, order access keys and admin session cookies. The server validates submitted data and reads current catalogue prices. Order lookups require both the order ID and access key. |
-| **B2 · Authenticated identity ↔ admin privilege** | F3–F5 | A valid Neon session and verified allowlisted Google identity establish identity. A separate signed PIN proof bound to that session and the current PIN revision gates privileged reads and writes. The storefront navigation action clears the PIN unlock. |
+| **B2 · Authenticated identity ↔ admin privilege** | F3–F5 | A valid Neon session, verified allowlisted email and server-issued proof of password sign-in establish identity. A separate signed PIN proof bound to that session and the current PIN revision gates privileged reads and writes. The storefront navigation action clears the PIN unlock. |
 | **B3 · Next.js ↔ Neon Postgres** | F5 | Server-only database credentials are used by Prisma. SQL functions enforce stock holds and apply payment events. Migrations enable row-level security on store tables and restrict public execution of sensitive functions. The live runtime role and grants depend on deployment configuration. |
-| **B4 · Next.js and admin browser ↔ identity services** | F4 | The admin browser follows OAuth redirects. Managed Better Auth handles Google sign-in and sends email verification codes. The app exchanges the OAuth verifier, checks each privileged request against the Neon session and verifies PIN setup or reset codes through Neon. |
+| **B4 · Next.js and admin browser ↔ identity services** | F4 | Managed Better Auth validates the password, changes or resets it, and sends email codes. The app checks each privileged request against the live Neon session and verifies PIN setup and reset codes through Neon. |
 | **B5 · Application and browsers ↔ Cloudinary** | F6–F7 | The server sends validated image uploads using server-only Cloudinary credentials and stores approved image references. Browsers fetch public product photos from the CDN. |
 | **B6 · Browser and application ↔ PayHere** | F2, F8–F9 | The shopper submits a signed LKR form with order and delivery details and enters card details at PayHere. The return or cancel flow shows status. A verified server notification authorizes a payment state transition. |
 

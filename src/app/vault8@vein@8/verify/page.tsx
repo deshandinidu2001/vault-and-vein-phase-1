@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { requireAdminGoogleIdentity } from "@/lib/admin-auth"
+import { requireAdminPasswordIdentity } from "@/lib/admin-auth"
 import { signOut } from "../actions"
 import { enterPin, sendVerificationCode, setPinWithCode } from "./actions"
 
@@ -15,7 +15,7 @@ const messages = {
 }
 
 export default async function AdminVerification({ searchParams }: PageProps<"/vault8@vein@8/verify">) {
-  const { email, revision, unlocked } = await requireAdminGoogleIdentity()
+  const { email, revision, unlocked } = await requireAdminPasswordIdentity()
   const { mode, result } = await searchParams
   const resetting = mode === "reset" || !revision
   if (unlocked && !resetting) redirect("/vault8@vein@8")

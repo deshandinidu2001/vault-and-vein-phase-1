@@ -17,20 +17,19 @@ Open http://localhost:3000. The catalogue shows published inventory from the dat
 
 1. Run `neon deploy` from the linked project to pull the pooled `DATABASE_URL`, direct `DATABASE_URL_UNPOOLED`, and `NEON_AUTH_BASE_URL` into the local environment file. For manual setup, copy both connection strings from the Neon **Connect** dialog into `.env.local`. `DIRECT_URL` is also accepted for a manually configured direct connection. Use the database owner when applying migrations. Create a dedicated Postgres login with no ownership, role-management or RLS-bypass privileges and grant it membership in `vault_store_runtime` after migration. Use its pooled URL for `DATABASE_URL` locally and in the Cloudflare Worker secret. Place `DATABASE_URL_UNPOOLED` in the ignored `.env.migrations.local` file or supply it to the migration job. Next.js loads the runtime credentials from `.env.local`.
 2. Run `npm ci` to generate Prisma Client, then run `npm run db:deploy` to apply the schema. Migrations are run explicitly so that a preview build cannot change a production database.
-### Set up admin sign-in with Google
+### Set up admin sign-in with email and password
 
-1. In Neon, enable **Managed Better Auth** on the branch used by `DATABASE_URL`. Open **Auth → Configuration** and copy the Auth URL into `NEON_AUTH_BASE_URL` in `.env.local`. [Neon Next.js guide](https://neon.com/docs/auth/quick-start/nextjs-api-only)
-2. Generate a cookie secret from PowerShell and save it as `NEON_AUTH_COOKIE_SECRET`.
+1. In the Neon project and branch that serve the store, open **Better Auth > Configure Auth**. Enable email/password sign-in and email verification codes. Use the same branch's Auth URL for `NEON_AUTH_BASE_URL`.
+2. Generate a random `NEON_AUTH_COOKIE_SECRET` of at least 32 characters. Keep it server-side. Use the same secret across deployments that share the store PIN database.
 
    ```powershell
    node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
    ```
 
-3. Run `npm run db:deploy` to create the PIN storage table. Store admin access is limited to the verified Google account `vault8vein@gmail.com`.
-4. In **Better Auth → Configure Auth**, check that Google is enabled and your app origin is trusted. Neon provides shared Google credentials for development. For production, configure a Google OAuth client and register `<NEON_AUTH_BASE_URL>/callback/google` in Google Cloud. [Neon Google OAuth setup](https://neon.com/docs/auth/guides/setup-oauth)
-5. Enable email verification codes in Neon and configure email delivery for production. The app uses Neon's Email OTP endpoints for PIN setup and recovery. [Neon Email OTP guide](https://neon.com/docs/auth/guides/plugins/email-otp)
-6. Restart the app and open `/vault8@vein@8`. Continue with Google, send a verification code, and choose an 8–12 digit PIN. On later sign-ins, enter the PIN after Google. Use **Forgot PIN?** or **Account security → Change PIN** to choose a new PIN using an email code. A PIN change signs out other admin sessions.
-7. For Vercel, set `NEON_AUTH_BASE_URL` and `NEON_AUTH_COOKIE_SECRET` as server environment variables. Use the same cookie secret when multiple deployments connect to the same PIN database. Changing the secret requires a PIN reset. Trust the deployment's origin in Neon and redeploy.
+3. Run `npm run db:deploy` for the store database. In **Better Auth > Users**, make sure `vault8vein@gmail.com` exists. Create it there if needed.
+4. In Neon, trust the storefront origin under **Domains** and enable **Revoke sessions on password reset**. Configure an email provider for production delivery. [Neon password recovery](https://neon.com/docs/auth/guides/password-reset)
+5. Open `/vault8@vein@8/login`. Choose **Set or reset password** if you need a store password, then enter the code from your email. Sign in with the verified store email and the store password. Set an 8–12 digit PIN if prompted. Enter it after signing in and when returning from the storefront.
+6. Open **Account security** from the admin panel to change your password or PIN. The password change signs out your other Neon sessions and returns this browser to sign-in. Changing the PIN requires a separate email code.
 
 ### Move an existing catalogue
 
